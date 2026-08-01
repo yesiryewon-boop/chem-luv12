@@ -302,8 +302,8 @@ tbody tr:hover{background:#F7FAFB}
         <label class="f" style="margin-top:12px"><span>덧붙일 지시 (선택)</span>
           <input type="text" id="tExtra" placeholder="예: 그래프 해석의 근거를 자료에서 인용하도록 유도해 줘"></label>
         <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-          <label class="f" style="flex:1;min-width:220px"><span>Gemini API 키 — 캔버스에서 실행할 때는 비워 두세요</span>
-            <input type="password" id="tKey" placeholder="캔버스 밖에서 쓸 때만 입력"></label>
+          <label class="f" style="flex:1;min-width:220px"><span>Gemini API 키 (이미 설정됨 — 다른 키로 바꾸려면 수정)</span>
+            <input type="password" id="tKey" placeholder="기본 키 사용 중"></label>
           <button class="btn ghost sm" onclick="changePw()">비밀번호 바꾸기</button>
         </div>
       </div>
@@ -985,10 +985,10 @@ ${cfg.extra?"[교사 추가 지시] "+cfg.extra:""}
 5. 과학적으로 틀린 서술이 있으면 부드럽지만 분명하게 짚는다.
 6. 초안일 뿐이며 교사가 고쳐 쓴다는 것을 전제로 담백하게 쓴다. 이모지는 쓰지 않는다.`;
 }
+const DEFAULT_GEMINI_KEY="AQ.Ab8RN6J5lpu_0-lEXMcRcrnqNqiU9LjboIhsgl41gYxRtmECmg";
 async function callGemini(sys,user){
-  /* 제미나이 캔버스에서는 API 키를 비워 두면 캔버스가 자동으로 넣어 줍니다.
-     캔버스 밖(파일 실행·학교 서버)에서는 교사 화면의 API 키 칸에 직접 넣으세요. */
-  const key=$("tKey").value.trim();
+  /* 교사 화면 API 키 칸이 비어 있으면 아래 기본 키를 사용합니다. */
+  const key=$("tKey").value.trim()||DEFAULT_GEMINI_KEY;
   const url=`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${key}`;
   const payload={
     systemInstruction:{parts:[{text:sys}]},
