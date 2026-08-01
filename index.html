@@ -989,7 +989,7 @@ async function callGemini(sys,user){
   /* 제미나이 캔버스에서는 API 키를 비워 두면 캔버스가 자동으로 넣어 줍니다.
      캔버스 밖(파일 실행·학교 서버)에서는 교사 화면의 API 키 칸에 직접 넣으세요. */
   const key=$("tKey").value.trim();
-  const url=`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${key}`;
+  const url=`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`;
   const payload={
     systemInstruction:{parts:[{text:sys}]},
     contents:[{role:"user",parts:[{text:user}]}],
