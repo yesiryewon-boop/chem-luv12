@@ -992,7 +992,8 @@ async function tryGeminiModel(model,key,payload){
   const url=`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
   const res=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
   if(res.status===404){const e=new Error("model_not_found");e.code=404;throw e;}
-  if(res.status===429||res.status>=500){const e=new Error("retry "+res.status);e.retryable=true;throw e;}
+  if(res.status===429){const e=new Error("요청이 너무 잦아 잠시 제한되었습니다(429). 1분 정도 기다렸다가 다시 눌러 주세요.");e.code=429;e.retryable=true;throw e;}
+  if(res.status>=500){const e=new Error("retry "+res.status);e.retryable=true;throw e;}
   if(!res.ok)throw new Error("HTTP "+res.status+" — "+(await res.text()).slice(0,120));
   const j=await res.json();
   const t=(j.candidates?.[0]?.content?.parts||[]).map(p=>p.text||"").join("");
@@ -1031,6 +1032,7 @@ async function callGemini(sys,user){
       }
     }
     if(stop&&lastErr&&lastErr.code!==404)break; /* 재시도 불가능한(키 문제 등) 오류면 전체 중단 */
+    if(lastErr&&lastErr.code===429)break; /* 429는 모델을 바꿔도 소용없음 — 바로 중단 */
   }
   throw lastErr||new Error("사용 가능한 모델을 찾지 못했습니다.");
 }
