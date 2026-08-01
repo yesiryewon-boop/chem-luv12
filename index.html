@@ -985,11 +985,24 @@ ${cfg.extra?"[교사 추가 지시] "+cfg.extra:""}
 5. 과학적으로 틀린 서술이 있으면 부드럽지만 분명하게 짚는다.
 6. 초안일 뿐이며 교사가 고쳐 쓴다는 것을 전제로 담백하게 쓴다. 이모지는 쓰지 않는다.`;
 }
+/* 1.5 이하 버전 모델을 우선순위대로 시도합니다 */
+const MODEL_CANDIDATES=["gemini-1.5-flash","gemini-1.5-flash-latest","gemini-1.5-flash-8b","gemini-1.5-pro"];
+const workingModel={};
+async function tryGeminiModel(model,key,payload){
+  const url=`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+  const res=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+  if(res.status===404){const e=new Error("model_not_found");e.code=404;throw e;}
+  if(res.status===429||res.status>=500){const e=new Error("retry "+res.status);e.retryable=true;throw e;}
+  if(!res.ok)throw new Error("HTTP "+res.status+" — "+(await res.text()).slice(0,120));
+  const j=await res.json();
+  const t=(j.candidates?.[0]?.content?.parts||[]).map(p=>p.text||"").join("");
+  return JSON.parse(t.replace(/```json|```/g,"").trim());
+}
 async function callGemini(sys,user){
   /* 제미나이 캔버스에서는 API 키를 비워 두면 캔버스가 자동으로 넣어 줍니다.
      캔버스 밖(파일 실행·학교 서버)에서는 교사 화면의 API 키 칸에 직접 넣으세요. */
   const key=$("tKey").value.trim();
-  const url=`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`;
+  if(!key)throw new Error("API 키를 먼저 입력해 주세요.");
   const payload={
     systemInstruction:{parts:[{text:sys}]},
     contents:[{role:"user",parts:[{text:user}]}],
@@ -999,20 +1012,27 @@ async function callGemini(sys,user){
         level:{type:"STRING"},teacherNote:{type:"STRING"}},
       required:["praise","suggestion","nextQuestion","level","teacherNote"]}}
   };
-  let wait=900;
-  for(let i=0;i<4;i++){
-    try{
-      const res=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
-      if(res.status===429||res.status>=500)throw new Error("retry "+res.status);
-      if(!res.ok)throw new Error("HTTP "+res.status+" — "+(await res.text()).slice(0,120));
-      const j=await res.json();
-      const t=(j.candidates?.[0]?.content?.parts||[]).map(p=>p.text||"").join("");
-      return JSON.parse(t.replace(/```json|```/g,"").trim());
-    }catch(e){
-      if(i===3)throw e;
-      await new Promise(r=>setTimeout(r,wait));wait*=2;
+  const models=workingModel[key]
+    ?[workingModel[key],...MODEL_CANDIDATES.filter(m=>m!==workingModel[key])]
+    :MODEL_CANDIDATES;
+  let lastErr=null;
+  for(const model of models){
+    let wait=900,stop=false;
+    for(let i=0;i<3;i++){
+      try{
+        const result=await tryGeminiModel(model,key,payload);
+        workingModel[key]=model;
+        return result;
+      }catch(e){
+        lastErr=e;
+        if(e.code===404){stop=true;break;} /* 이 모델은 안 됨 — 바로 다음 후보로 */
+        if(!e.retryable){stop=true;break;} /* 키 오류 등은 모델 바꿔도 소용없음 */
+        await new Promise(r=>setTimeout(r,wait));wait*=2;
+      }
     }
+    if(stop&&lastErr&&lastErr.code!==404)break; /* 재시도 불가능한(키 문제 등) 오류면 전체 중단 */
   }
+  throw lastErr||new Error("사용 가능한 모델을 찾지 못했습니다.");
 }
 function userPrompt(s){
   return `학생 이름: ${s.nm}
