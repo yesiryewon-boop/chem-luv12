@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>원소 데이터 탐험실 · PubChem Periodic Table</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#101A22; --ink-2:#43555F; --ink-3:#7C8D97;
+  --paper:#E4E9ED; --panel:#FFFFFF; --line:#C8D2D9; --line-2:#E3E9ED;
+  --teal:#0F6E7A; --teal-soft:#DCEFF1;
+  --violet:#5B3B94; --violet-soft:#EDE7F7;
+  --amber:#B26B00; --red:#B3402E;
+  --r:4px;
+  --shadow:0 1px 2px rgba(16,26,34,.06), 0 6px 18px rgba(16,26,34,.06);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--paper);
+  background-image:linear-gradient(var(--line-2) 1px,transparent 1px),linear-gradient(90deg,var(--line-2) 1px,transparent 1px);
+  background-size:22px 22px;
+  color:var(--ink);
+  font-family:"IBM Plex Sans KR",system-ui,sans-serif;
+  font-size:14px; line-height:1.55;
+}
+h1,h2,h3{margin:0;font-family:"Space Grotesk","IBM Plex Sans KR",sans-serif;font-weight:700;letter-spacing:-.01em}
+.mono{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums}
+.wrap{max-width:1240px;margin:0 auto;padding:0 18px 64px}
+
+/* ---- top bar ---- */
+.topbar{position:sticky;top:0;z-index:40;background:rgba(228,233,237,.93);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.topbar-in{max-width:1240px;margin:0 auto;padding:10px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.brand{display:flex;align-items:baseline;gap:10px}
+.brand h1{font-size:19px}
+.brand .sub{font-size:11px;color:var(--ink-3);letter-spacing:.08em;text-transform:uppercase;font-family:"IBM Plex Mono",monospace}
+.modes{margin-left:auto;display:flex;border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--panel)}
+.modes button{border:0;background:transparent;padding:7px 14px;font:inherit;font-size:13px;cursor:pointer;color:var(--ink-2)}
+.modes button.on{background:var(--ink);color:#fff}
+
+/* ---- generic panel ---- */
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
+.panel-h{padding:10px 14px;border-bottom:1px solid var(--line-2);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.panel-h h2{font-size:14px}
+.eyebrow{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+.pad{padding:14px}
+
+/* ---- controls ---- */
+.controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;padding:14px}
+label.f{display:block}
+label.f>span{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);font-family:"IBM Plex Mono",monospace;margin-bottom:4px}
+select,input[type=text],input[type=password],input[type=number],textarea{
+  width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:var(--r);background:#fff;
+  font:inherit;font-size:13px;color:var(--ink)}
+select:focus,input:focus,textarea:focus{outline:2px solid var(--teal);outline-offset:-1px}
+textarea{resize:vertical;min-height:66px;line-height:1.6}
+.btn{border:1px solid var(--ink);background:var(--ink);color:#fff;padding:7px 13px;border-radius:var(--r);
+  font:inherit;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{opacity:.88}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+.btn.teal{background:var(--teal);border-color:var(--teal)}
+.btn.violet{background:var(--violet);border-color:var(--violet)}
+.btn.sm{padding:4px 9px;font-size:12px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{border:1px solid var(--line);background:#fff;border-radius:99px;padding:3px 10px;font-size:12px;cursor:pointer;
+  display:inline-flex;align-items:center;gap:6px;color:var(--ink-2)}
+.chip .dot{width:9px;height:9px;border-radius:99px;border:1px solid rgba(0,0,0,.18)}
+.chip.off{opacity:.38;text-decoration:line-through}
+.toggle{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--ink-2);cursor:pointer}
+
+/* ---- layout ---- */
+.split{display:grid;grid-template-columns:1fr 292px;gap:16px;margin-top:16px}
+@media(max-width:900px){.split{grid-template-columns:1fr}}
+.stack{display:flex;flex-direction:column;gap:16px}
+
+/* ---- chart ---- */
+#chart{width:100%;height:auto;display:block}
+.tick{font-family:"IBM Plex Mono",monospace;font-size:10px;fill:var(--ink-3)}
+.axis-title{font-family:"IBM Plex Sans KR",sans-serif;font-size:12px;fill:var(--ink-2);font-weight:500}
+.gl{stroke:var(--line-2);stroke-width:1}
+.ax{stroke:var(--ink);stroke-width:1.2}
+.pt{cursor:pointer;stroke:rgba(16,26,34,.55);stroke-width:.9;transition:r .12s}
+.pt:hover{stroke:var(--ink);stroke-width:2}
+.pt.dim{opacity:.16}
+.plabel{font-family:"IBM Plex Mono",monospace;font-size:9.5px;fill:var(--ink-2);pointer-events:none}
+.trend{stroke:var(--red);stroke-width:1.4;stroke-dasharray:5 4;opacity:.8}
+#tip{position:fixed;z-index:80;pointer-events:none;background:var(--ink);color:#fff;padding:7px 10px;border-radius:var(--r);
+  font-size:12px;line-height:1.45;box-shadow:0 6px 20px rgba(0,0,0,.25);display:none;max-width:230px}
+#tip b{font-family:"Space Grotesk",sans-serif}
+
+/* ---- stats ---- */
+.stat{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px dotted var(--line-2);font-size:13px}
+.stat:last-child{border:0}
+.stat span:first-child{color:var(--ink-3)}
+.stat span:last-child{font-family:"IBM Plex Mono",monospace}
+
+/* ---- element card ---- */
+.ecard-top{display:flex;gap:12px;align-items:center}
+.ebox{width:62px;height:62px;border:1px solid var(--ink);border-radius:var(--r);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;flex:none}
+.ebox .sym{font-family:"Space Grotesk",sans-serif;font-size:24px;font-weight:700;line-height:1}
+.ebox .z{font-family:"IBM Plex Mono",monospace;font-size:10px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;margin-top:10px;font-size:12.5px}
+.kv dt{color:var(--ink-3)}
+.kv dd{margin:0;font-family:"IBM Plex Mono",monospace;word-break:break-all}
+
+/* ---- periodic table ---- */
+.ptable{display:grid;grid-template-columns:repeat(18,minmax(0,1fr));gap:2px}
+.cell{aspect-ratio:1/1;border:1px solid rgba(16,26,34,.14);border-radius:2px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;cursor:pointer;position:relative;min-height:0}
+.cell .s{font-family:"Space Grotesk",sans-serif;font-weight:700;font-size:clamp(7px,1.05vw,13px);line-height:1}
+.cell .n{font-family:"IBM Plex Mono",monospace;font-size:clamp(5px,.62vw,8px);opacity:.65;line-height:1}
+.cell.sel{outline:2.5px solid var(--ink);outline-offset:-1px;z-index:2}
+.cell.dim{opacity:.2}
+.cell.nodata{background-image:repeating-linear-gradient(45deg,#fff,#fff 3px,#E7ECEF 3px,#E7ECEF 6px)}
+.spacer{grid-column:span 1}
+.legend-bar{height:11px;border-radius:2px;border:1px solid var(--line)}
+
+/* ---- table ---- */
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th,td{text-align:left;padding:7px 9px;border-bottom:1px solid var(--line-2);vertical-align:top}
+th{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);
+  background:#F5F8F9;position:sticky;top:0}
+tbody tr:hover{background:#F7FAFB}
+.badge{display:inline-block;padding:1px 7px;border-radius:99px;font-size:11px;border:1px solid var(--line);color:var(--ink-2)}
+.badge.done{background:var(--teal-soft);border-color:var(--teal);color:var(--teal)}
+.badge.draft{background:#FFF3DE;border-color:var(--amber);color:var(--amber)}
+.hint{font-size:12px;color:var(--ink-3);line-height:1.6}
+.notice{border-left:3px solid var(--teal);background:var(--teal-soft);padding:9px 12px;border-radius:0 var(--r) var(--r) 0;font-size:12.5px}
+.notice.warn{border-color:var(--amber);background:#FFF6E6}
+.hidden{display:none !important}
+.spin{display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;
+  border-radius:99px;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.fb-box{background:#FAFCFC;border:1px dashed var(--line);border-radius:var(--r);padding:11px;white-space:pre-wrap;font-size:13px;line-height:1.7}
+</style>
+</head>
+<body>
+<div id="tip"></div>
+
+<header class="topbar">
+  <div class="topbar-in">
+    <div class="brand">
+      <h1>원소 데이터 탐험실</h1>
+      <span class="sub">PubChem · 118 elements</span>
+    </div>
+    <div class="modes">
+      <button id="mStudent" class="on" onclick="setMode('student')">학생</button>
+      <button id="mTeacher" onclick="setMode('teacher')">교사</button>
+    </div>
+  </div>
+</header>
+<!-- ================= STUDENT ================= -->
+<main id="viewStudent" class="wrap">
+
+  <section class="panel" style="margin-top:16px">
+    <div class="panel-h">
+      <span class="eyebrow">01 / 축 정하기</span>
+      <h2>무엇과 무엇을 비교해 볼까?</h2>
+    </div>
+    <div class="controls">
+      <label class="f"><span>가로축 (X)</span><select id="selX"></select></label>
+      <label class="f"><span>세로축 (Y)</span><select id="selY"></select></label>
+      <label class="f"><span>그래프 종류</span>
+        <select id="selChart">
+          <option value="scatter">산점도</option>
+          <option value="line">원자번호 순 꺾은선(주기성)</option>
+          <option value="bar">막대그래프</option>
+        </select>
+      </label>
+      <label class="f"><span>점 색깔 기준</span>
+        <select id="selColor">
+          <option value="GroupBlock">원소 분류</option>
+          <option value="CPKHexColor">CPK 색상</option>
+          <option value="StandardState">상온에서의 상태</option>
+          <option value="value">Y값 크기(단색 농도)</option>
+        </select>
+      </label>
+    </div>
+    <div class="pad" style="border-top:1px solid var(--line-2);display:flex;gap:16px;flex-wrap:wrap;align-items:center">
+      <label class="toggle"><input type="checkbox" id="chkLogY"> Y축 로그 눈금</label>
+      <label class="toggle"><input type="checkbox" id="chkLogX"> X축 로그 눈금</label>
+      <label class="toggle"><input type="checkbox" id="chkLabel"> 원소 기호 표시</label>
+      <label class="toggle"><input type="checkbox" id="chkTrend" checked> 추세선 · 상관계수</label>
+      <label class="f" style="width:150px;margin-left:auto"><span>원자번호 범위</span>
+        <div style="display:flex;gap:5px;align-items:center">
+          <input type="number" id="zMin" value="1" min="1" max="118" class="mono">
+          <span class="mono" style="color:var(--ink-3)">–</span>
+          <input type="number" id="zMax" value="118" min="1" max="118" class="mono">
+        </div>
+      </label>
+    </div>
+    <div class="pad" style="border-top:1px solid var(--line-2)">
+      <div class="eyebrow" style="margin-bottom:6px">분류 필터 — 클릭해서 켜고 끄기</div>
+      <div class="chips" id="groupChips"></div>
+    </div>
+  </section>
+
+  <div class="split">
+    <section class="panel">
+      <div class="panel-h">
+        <span class="eyebrow">02 / 그래프</span>
+        <h2 id="chartTitle">그래프</h2>
+        <button class="btn ghost sm" style="margin-left:auto" onclick="downloadSVG()">그래프 저장(SVG)</button>
+        <button class="btn ghost sm" onclick="downloadFiltered()">이 데이터 CSV</button>
+      </div>
+      <div class="pad"><svg id="chart" viewBox="0 0 760 470" role="img" aria-label="원소 데이터 그래프"></svg></div>
+    </section>
+
+    <div class="stack">
+      <section class="panel">
+        <div class="panel-h"><span class="eyebrow">읽어보기</span><h2>숫자로 확인</h2></div>
+        <div class="pad" id="statBox"></div>
+      </section>
+      <section class="panel">
+        <div class="panel-h"><span class="eyebrow">선택한 원소</span><h2 id="ecardName">클릭해 보세요</h2></div>
+        <div class="pad" id="ecard"><p class="hint">그래프의 점이나 아래 주기율표의 칸을 클릭하면 그 원소의 자료가 모두 나타납니다.</p></div>
+      </section>
+    </div>
+  </div>
+
+  <section class="panel" style="margin-top:16px">
+    <div class="panel-h">
+      <span class="eyebrow">03 / 주기율표에서 보기</span>
+      <h2><span id="ptVar">세로축 값</span>을 색의 진하기로 나타낸 주기율표</h2>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
+        <span class="mono" id="legMin" style="font-size:11px"></span>
+        <div class="legend-bar" id="legBar" style="width:110px"></div>
+        <span class="mono" id="legMax" style="font-size:11px"></span>
+      </div>
+    </div>
+    <div class="pad">
+      <div class="ptable" id="ptable"></div>
+      <p class="hint" style="margin:10px 0 0">빗금 친 칸은 PubChem 자료에 값이 없는 원소입니다. 값이 없다는 것도 하나의 발견입니다 — 왜 없을까요?</p>
+    </div>
+  </section>
+
+  <section class="panel" style="margin-top:16px">
+    <div class="panel-h"><span class="eyebrow">04 / 탐구 기록</span><h2>내가 찾은 규칙성을 제출하기</h2></div>
+    <div class="pad">
+      <div class="controls" style="padding:0 0 12px">
+        <label class="f"><span>학반</span><input type="text" id="sClass" placeholder="예: 2학년 3반"></label>
+        <label class="f"><span>번호</span><input type="text" id="sNo" placeholder="예: 12"></label>
+        <label class="f"><span>이름</span><input type="text" id="sName" placeholder="예: 김영종"></label>
+      </div>
+      <label class="f" style="margin-bottom:10px"><span>1. 내가 만든 그래프에서 보이는 경향 (관찰)</span>
+        <textarea id="sObs" placeholder="예: 같은 족에서 원자번호가 커질수록 원자 반지름이 커진다."></textarea></label>
+      <label class="f" style="margin-bottom:10px"><span>2. 그렇게 나타나는 까닭 (설명·모형)</span>
+        <textarea id="sExp" placeholder="예: 전자 껍질 수가 늘어나기 때문이라고 생각한다."></textarea></label>
+      <label class="f" style="margin-bottom:12px"><span>3. 새로 생긴 질문</span>
+        <textarea id="sQ" placeholder="예: 그렇다면 전이 금속에서는 왜 반지름 변화가 작을까?"></textarea></label>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <button class="btn teal" onclick="submitWork()">제출하기</button>
+        <span class="hint" id="subMsg"></span>
+        <button class="btn ghost sm" style="margin-left:auto" onclick="openMyFeedback()">내 피드백 확인</button>
+      </div>
+      <div id="myFeedback" class="hidden" style="margin-top:12px"></div>
+    </div>
+  </section>
+</main>
+
+<!-- ================= TEACHER ================= -->
+<main id="viewTeacher" class="wrap hidden">
+
+  <section class="panel" id="gate" style="margin-top:16px;max-width:420px">
+    <div class="panel-h"><span class="eyebrow">교사용</span><h2>비밀번호 입력</h2></div>
+    <div class="pad">
+      <label class="f" style="margin-bottom:10px"><span>비밀번호</span>
+        <input type="password" id="pw" onkeydown="if(event.key==='Enter')tryLogin()"></label>
+      <button class="btn violet" onclick="tryLogin()">들어가기</button>
+      <p class="hint" id="pwMsg" style="margin:8px 0 0">최초 비밀번호는 <b class="mono">1234</b> 입니다. 들어간 뒤 바꿀 수 있습니다.</p>
+    </div>
+  </section>
+
+  <div id="dash" class="hidden">
+    <section class="panel" style="margin-top:16px">
+      <div class="panel-h">
+        <span class="eyebrow">05 / 피드백 기준</span>
+        <h2>성취기준과 교과 역량 설정</h2>
+        <button class="btn ghost sm" style="margin-left:auto" onclick="lock()">잠그기</button>
+      </div>
+      <div class="pad">
+        <div class="controls" style="padding:0 0 12px">
+          <label class="f"><span>과목</span><input type="text" id="tSubject" value="통합과학"></label>
+          <label class="f"><span>단원</span><input type="text" id="tUnit" value="물질과 규칙성 – 원소의 주기성"></label>
+          <label class="f"><span>피드백 길이</span>
+            <select id="tLen"><option value="짧게(3~4문장)">짧게 (3~4문장)</option>
+            <option value="보통(5~6문장)" selected>보통 (5~6문장)</option>
+            <option value="자세히(7~9문장)">자세히 (7~9문장)</option></select></label>
+          <label class="f"><span>말투</span>
+            <select id="tTone"><option>따뜻하고 격려하는</option><option>담백하고 간결한</option><option>탐구 질문을 던지는</option></select></label>
+        </div>
+        <label class="f" style="margin-bottom:12px"><span>성취기준 (여러 개면 줄바꿈)</span>
+          <textarea id="tStd">[10통과1-02-01] 지구와 생명체를 구성하는 원소들의 규칙성을 원소의 주기성과 관련지어 설명할 수 있다.</textarea></label>
+        <div class="eyebrow" style="margin-bottom:6px">평가할 교과 역량 — 선택한 역량만 피드백에 반영됩니다</div>
+        <div class="chips" id="compChips"></div>
+        <label class="f" style="margin-top:12px"><span>덧붙일 지시 (선택)</span>
+          <input type="text" id="tExtra" placeholder="예: 그래프 해석의 근거를 자료에서 인용하도록 유도해 줘"></label>
+        <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          <label class="f" style="flex:1;min-width:220px"><span>Gemini API 키 — 캔버스에서 실행할 때는 비워 두세요</span>
+            <input type="password" id="tKey" placeholder="캔버스 밖에서 쓸 때만 입력"></label>
+          <button class="btn ghost sm" onclick="changePw()">비밀번호 바꾸기</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" style="margin-top:16px">
+      <div class="panel-h">
+        <span class="eyebrow">06 / 제출물</span>
+        <h2>학생 제출 현황 <span class="mono" id="cnt" style="color:var(--ink-3)"></span></h2>
+        <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn violet sm" id="btnAll" onclick="feedbackAll()">AI 피드백 초안 일괄 생성</button>
+          <button class="btn ghost sm" onclick="downloadCSV()">CSV 내려받기</button>
+          <button class="btn ghost sm" onclick="wipe()">전체 삭제</button>
+        </div>
+      </div>
+      <div class="pad" style="padding:0">
+        <div class="pad"><div class="notice">AI가 만든 글은 <b>초안</b>입니다. 아래에서 고쳐 쓴 뒤 <b>학생에게 전달</b>을 눌러야 학생 화면에 보입니다.</div></div>
+        <div style="overflow:auto;max-height:640px">
+          <table id="subTable">
+            <thead><tr><th style="width:110px">학생</th><th>제출 내용</th><th style="width:330px">피드백 초안 → 최종</th><th style="width:96px">상태</th></tr></thead>
+            <tbody id="subBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+</main>
+<script>
+const RAW=[
+[1, "H", "Hydrogen", "수소", 1.008, "FFFFFF", "1s1", 2.2, 120.0, 13.598, 0.754, "+1, -1", "Gas", 13.81, 20.28, 8.988e-05, "Nonmetal", 1766.0, 1, 1],
+[2, "He", "Helium", "헬륨", 4.0026, "D9FFFF", "1s2", null, 140.0, 24.587, null, "0", "Gas", 0.95, 4.22, 0.0001785, "Noble gas", 1868.0, 1, 18],
+[3, "Li", "Lithium", "리튬", 7.0, "CC80FF", "[He]2s1", 0.98, 182.0, 5.392, 0.618, "+1", "Solid", 453.65, 1615.0, 0.534, "Alkali metal", 1817.0, 2, 1],
+[4, "Be", "Beryllium", "베릴륨", 9.012183, "C2FF00", "[He]2s2", 1.57, 153.0, 9.323, null, "+2", "Solid", 1560.0, 2744.0, 1.85, "Alkaline earth metal", 1798.0, 2, 2],
+[5, "B", "Boron", "붕소", 10.81, "FFB5B5", "[He]2s2 2p1", 2.04, 192.0, 8.298, 0.277, "+3", "Solid", 2348.0, 4273.0, 2.37, "Metalloid", 1808.0, 2, 13],
+[6, "C", "Carbon", "탄소", 12.011, "909090", "[He]2s2 2p2", 2.55, 170.0, 11.26, 1.263, "+4, +2, -4", "Solid", 3823.0, 4098.0, 2.267, "Nonmetal", null, 2, 14],
+[7, "N", "Nitrogen", "질소", 14.007, "3050F8", "[He] 2s2 2p3", 3.04, 155.0, 14.534, null, "+5, +4, +3, +2, +1, -1, -2, -3", "Gas", 63.15, 77.36, 0.0012506, "Nonmetal", 1772.0, 2, 15],
+[8, "O", "Oxygen", "산소", 15.999, "FF0D0D", "[He]2s2 2p4", 3.44, 152.0, 13.618, 1.461, "-2", "Gas", 54.36, 90.2, 0.001429, "Nonmetal", 1774.0, 2, 16],
+[9, "F", "Fluorine", "플루오린", 18.99840316, "90E050", "[He]2s2 2p5", 3.98, 135.0, 17.423, 3.339, "-1", "Gas", 53.53, 85.03, 0.001696, "Halogen", 1670.0, 2, 17],
+[10, "Ne", "Neon", "네온", 20.18, "B3E3F5", "[He]2s2 2p6", null, 154.0, 21.565, null, "0", "Gas", 24.56, 27.07, 0.0008999, "Noble gas", 1898.0, 2, 18],
+[11, "Na", "Sodium", "나트륨", 22.9897693, "AB5CF2", "[Ne]3s1", 0.93, 227.0, 5.139, 0.548, "+1", "Solid", 370.95, 1156.0, 0.97, "Alkali metal", 1807.0, 3, 1],
+[12, "Mg", "Magnesium", "마그네슘", 24.305, "8AFF00", "[Ne]3s2", 1.31, 173.0, 7.646, null, "+2", "Solid", 923.0, 1363.0, 1.74, "Alkaline earth metal", 1808.0, 3, 2],
+[13, "Al", "Aluminum", "알루미늄", 26.981538, "BFA6A6", "[Ne]3s2 3p1", 1.61, 184.0, 5.986, 0.441, "+3", "Solid", 933.437, 2792.0, 2.7, "Post-transition metal", null, 3, 13],
+[14, "Si", "Silicon", "규소", 28.085, "F0C8A0", "[Ne]3s2 3p2", 1.9, 210.0, 8.152, 1.385, "+4, +2, -4", "Solid", 1687.0, 3538.0, 2.3296, "Metalloid", 1854.0, 3, 14],
+[15, "P", "Phosphorus", "인", 30.973762, "FF8000", "[Ne]3s2 3p3", 2.19, 180.0, 10.487, 0.746, "+5, +3, -3", "Solid", 317.3, 553.65, 1.82, "Nonmetal", 1669.0, 3, 15],
+[16, "S", "Sulfur", "황", 32.07, "FFFF30", "[Ne]3s2 3p4", 2.58, 180.0, 10.36, 2.077, "+6, +4, -2", "Solid", 388.36, 717.75, 2.067, "Nonmetal", null, 3, 16],
+[17, "Cl", "Chlorine", "염소", 35.45, "1FF01F", "[Ne]3s2 3p5", 3.16, 175.0, 12.968, 3.617, "+7, +5, +1, -1", "Gas", 171.65, 239.11, 0.003214, "Halogen", 1774.0, 3, 17],
+[18, "Ar", "Argon", "아르곤", 39.9, "80D1E3", "[Ne]3s2 3p6", null, 188.0, 15.76, null, "0", "Gas", 83.8, 87.3, 0.0017837, "Noble gas", 1894.0, 3, 18],
+[19, "K", "Potassium", "칼륨", 39.0983, "8F40D4", "[Ar]4s1", 0.82, 275.0, 4.341, 0.501, "+1", "Solid", 336.53, 1032.0, 0.89, "Alkali metal", 1807.0, 4, 1],
+[20, "Ca", "Calcium", "칼슘", 40.08, "3DFF00", "[Ar]4s2", 1.0, 231.0, 6.113, null, "+2", "Solid", 1115.0, 1757.0, 1.54, "Alkaline earth metal", null, 4, 2],
+[21, "Sc", "Scandium", "스칸듐", 44.95591, "E6E6E6", "[Ar]4s2 3d1", 1.36, 211.0, 6.561, 0.188, "+3", "Solid", 1814.0, 3109.0, 2.99, "Transition metal", 1879.0, 4, 3],
+[22, "Ti", "Titanium", "타이타늄", 47.867, "BFC2C7", "[Ar]4s2 3d2", 1.54, 187.0, 6.828, 0.079, "+4, +3, +2", "Solid", 1941.0, 3560.0, 4.5, "Transition metal", 1791.0, 4, 4],
+[23, "V", "Vanadium", "바나듐", 50.9415, "A6A6AB", "[Ar]4s2 3d3", 1.63, 179.0, 6.746, 0.525, "+5, +4, +3, +2", "Solid", 2183.0, 3680.0, 6.0, "Transition metal", 1801.0, 4, 5],
+[24, "Cr", "Chromium", "크로뮴", 51.996, "8A99C7", "[Ar]3d5 4s1", 1.66, 189.0, 6.767, 0.666, "+6, +3, +2", "Solid", 2180.0, 2944.0, 7.15, "Transition metal", 1797.0, 4, 6],
+[25, "Mn", "Manganese", "망가니즈", 54.93804, "9C7AC7", "[Ar]4s2 3d5", 1.55, 197.0, 7.434, null, "+7, +4, +3, +2", "Solid", 1519.0, 2334.0, 7.3, "Transition metal", 1774.0, 4, 7],
+[26, "Fe", "Iron", "철", 55.84, "E06633", "[Ar]4s2 3d6", 1.83, 194.0, 7.902, 0.163, "+3, +2", "Solid", 1811.0, 3134.0, 7.874, "Transition metal", null, 4, 8],
+[27, "Co", "Cobalt", "코발트", 58.93319, "F090A0", "[Ar]4s2 3d7", 1.88, 192.0, 7.881, 0.661, "+3, +2", "Solid", 1768.0, 3200.0, 8.86, "Transition metal", 1735.0, 4, 9],
+[28, "Ni", "Nickel", "니켈", 58.693, "50D050", "[Ar]4s2 3d8", 1.91, 163.0, 7.64, 1.156, "+3, +2", "Solid", 1728.0, 3186.0, 8.912, "Transition metal", 1751.0, 4, 10],
+[29, "Cu", "Copper", "구리", 63.55, "C88033", "[Ar]4s1 3d10", 1.9, 140.0, 7.726, 1.228, "+2, +1", "Solid", 1357.77, 2835.0, 8.933, "Transition metal", null, 4, 11],
+[30, "Zn", "Zinc", "아연", 65.4, "7D80B0", "[Ar]4s2 3d10", 1.65, 139.0, 9.394, null, "+2", "Solid", 692.68, 1180.0, 7.134, "Transition metal", 1746.0, 4, 12],
+[31, "Ga", "Gallium", "갈륨", 69.723, "C28F8F", "[Ar]4s2 3d10 4p1", 1.81, 187.0, 5.999, 0.3, "+3", "Solid", 302.91, 2477.0, 5.91, "Post-transition metal", 1875.0, 4, 13],
+[32, "Ge", "Germanium", "저마늄", 72.63, "668F8F", "[Ar]4s2 3d10 4p2", 2.01, 211.0, 7.9, 1.35, "+4, +2", "Solid", 1211.4, 3106.0, 5.323, "Metalloid", 1886.0, 4, 14],
+[33, "As", "Arsenic", "비소", 74.92159, "BD80E3", "[Ar]4s2 3d10 4p3", 2.18, 185.0, 9.815, 0.81, "+5, +3, -3", "Solid", 1090.0, 887.0, 5.776, "Metalloid", null, 4, 15],
+[34, "Se", "Selenium", "셀레늄", 78.97, "FFA100", "[Ar]4s2 3d10 4p4", 2.55, 190.0, 9.752, 2.021, "+6, +4, -2", "Solid", 493.65, 958.0, 4.809, "Nonmetal", 1817.0, 4, 16],
+[35, "Br", "Bromine", "브로민", 79.9, "A62929", "[Ar]4s2 3d10 4p5", 2.96, 183.0, 11.814, 3.365, "+5, +1, -1", "Liquid", 265.95, 331.95, 3.11, "Halogen", 1826.0, 4, 17],
+[36, "Kr", "Krypton", "크립톤", 83.8, "5CB8D1", "[Ar]4s2 3d10 4p6", 3.0, 202.0, 14.0, null, "0", "Gas", 115.79, 119.93, 0.003733, "Noble gas", 1898.0, 4, 18],
+[37, "Rb", "Rubidium", "루비듐", 85.468, "702EB0", "[Kr]5s1", 0.82, 303.0, 4.177, 0.468, "+1", "Solid", 312.46, 961.0, 1.53, "Alkali metal", 1861.0, 5, 1],
+[38, "Sr", "Strontium", "스트론튬", 87.62, "00FF00", "[Kr]5s2", 0.95, 249.0, 5.695, null, "+2", "Solid", 1050.0, 1655.0, 2.64, "Alkaline earth metal", 1790.0, 5, 2],
+[39, "Y", "Yttrium", "이트륨", 88.90584, "94FFFF", "[Kr]5s2 4d1", 1.22, 219.0, 6.217, 0.307, "+3", "Solid", 1795.0, 3618.0, 4.47, "Transition metal", 1794.0, 5, 3],
+[40, "Zr", "Zirconium", "지르코늄", 91.22, "94E0E0", "[Kr]5s2 4d2", 1.33, 186.0, 6.634, 0.426, "+4", "Solid", 2128.0, 4682.0, 6.52, "Transition metal", 1789.0, 5, 4],
+[41, "Nb", "Niobium", "나이오븀", 92.90637, "73C2C9", "[Kr]5s1 4d4", 1.6, 207.0, 6.759, 0.893, "+5, +3", "Solid", 2750.0, 5017.0, 8.57, "Transition metal", 1801.0, 5, 5],
+[42, "Mo", "Molybdenum", "몰리브데넘", 95.95, "54B5B5", "[Kr]5s1 4d5", 2.16, 209.0, 7.092, 0.746, "+6", "Solid", 2896.0, 4912.0, 10.2, "Transition metal", 1778.0, 5, 6],
+[43, "Tc", "Technetium", "테크네튬", 96.90636, "3B9E9E", "[Kr]5s2 4d5", 1.9, 209.0, 7.28, 0.55, "+7, +6, +4", "Solid", 2430.0, 4538.0, 11.0, "Transition metal", 1937.0, 5, 7],
+[44, "Ru", "Ruthenium", "루테늄", 101.1, "248F8F", "[Kr]5s1 4d7", 2.2, 207.0, 7.361, 1.05, "+3", "Solid", 2607.0, 4423.0, 12.1, "Transition metal", 1827.0, 5, 8],
+[45, "Rh", "Rhodium", "로듐", 102.9055, "0A7D8C", "[Kr]5s1 4d8", 2.28, 195.0, 7.459, 1.137, "+3", "Solid", 2237.0, 3968.0, 12.4, "Transition metal", 1803.0, 5, 9],
+[46, "Pd", "Palladium", "팔라듐", 106.42, "6985", "[Kr]4d10", 2.2, 202.0, 8.337, 0.557, "+3, +2", "Solid", 1828.05, 3236.0, 12.0, "Transition metal", 1803.0, 5, 10],
+[47, "Ag", "Silver", "은", 107.868, "C0C0C0", "[Kr]5s1 4d10", 1.93, 172.0, 7.576, 1.302, "+1", "Solid", 1234.93, 2435.0, 10.501, "Transition metal", null, 5, 11],
+[48, "Cd", "Cadmium", "카드뮴", 112.41, "FFD98F", "[Kr]5s2 4d10", 1.69, 158.0, 8.994, null, "+2", "Solid", 594.22, 1040.0, 8.69, "Transition metal", 1817.0, 5, 12],
+[49, "In", "Indium", "인듐", 114.818, "A67573", "[Kr]5s2 4d10 5p1", 1.78, 193.0, 5.786, 0.3, "+3", "Solid", 429.75, 2345.0, 7.31, "Post-transition metal", 1863.0, 5, 13],
+[50, "Sn", "Tin", "주석", 118.71, "668080", "[Kr]5s2 4d10 5p2", 1.96, 217.0, 7.344, 1.2, "+4, +2", "Solid", 505.08, 2875.0, 7.287, "Post-transition metal", null, 5, 14],
+[51, "Sb", "Antimony", "안티모니", 121.76, "9E63B5", "[Kr]5s2 4d10 5p3", 2.05, 206.0, 8.64, 1.07, "+5, +3, -3", "Solid", 903.78, 1860.0, 6.685, "Metalloid", null, 5, 15],
+[52, "Te", "Tellurium", "텔루륨", 127.6, "D47A00", "[Kr]5s2 4d10 5p4", 2.1, 206.0, 9.01, 1.971, "+6, +4, -2", "Solid", 722.66, 1261.0, 6.232, "Metalloid", 1782.0, 5, 16],
+[53, "I", "Iodine", "아이오딘", 126.9045, "940094", "[Kr]5s2 4d10 5p5", 2.66, 198.0, 10.451, 3.059, "+7, +5, +1, -1", "Solid", 386.85, 457.55, 4.93, "Halogen", 1811.0, 5, 17],
+[54, "Xe", "Xenon", "제논", 131.29, "429EB0", "[Kr]5s2 4d10 5p6", 2.6, 216.0, 12.13, null, "0", "Gas", 161.36, 165.03, 0.005887, "Noble gas", 1898.0, 5, 18],
+[55, "Cs", "Cesium", "세슘", 132.905452, "57178F", "[Xe]6s1", 0.79, 343.0, 3.894, 0.472, "+1", "Solid", 301.59, 944.0, 1.93, "Alkali metal", 1860.0, 6, 1],
+[56, "Ba", "Barium", "바륨", 137.33, "00C900", "[Xe]6s2", 0.89, 268.0, 5.212, null, "+2", "Solid", 1000.0, 2170.0, 3.62, "Alkaline earth metal", 1808.0, 6, 2],
+[57, "La", "Lanthanum", "란타넘", 138.9055, "70D4FF", "[Xe]6s2 5d1", 1.1, 240.0, 5.577, 0.5, "+3", "Solid", 1191.0, 3737.0, 6.15, "Lanthanide", 1839.0, 9, 3],
+[58, "Ce", "Cerium", "세륨", 140.116, "FFFFC7", "[Xe]6s2 4f1 5d1", 1.12, 235.0, 5.539, 0.5, "+4, +3", "Solid", 1071.0, 3697.0, 6.77, "Lanthanide", 1803.0, 9, 4],
+[59, "Pr", "Praseodymium", "프라세오디뮴", 140.90766, "D9FFC7", "[Xe]6s2 4f3", 1.13, 239.0, 5.464, null, "+3", "Solid", 1204.0, 3793.0, 6.77, "Lanthanide", 1885.0, 9, 5],
+[60, "Nd", "Neodymium", "네오디뮴", 144.24, "C7FFC7", "[Xe]6s2 4f4", 1.14, 229.0, 5.525, null, "+3", "Solid", 1294.0, 3347.0, 7.01, "Lanthanide", 1885.0, 9, 6],
+[61, "Pm", "Promethium", "프로메튬", 144.91276, "A3FFC7", "[Xe]6s2 4f5", null, 236.0, 5.55, null, "+3", "Solid", 1315.0, 3273.0, 7.26, "Lanthanide", 1945.0, 9, 7],
+[62, "Sm", "Samarium", "사마륨", 150.4, "8FFFC7", "[Xe]6s2 4f6", 1.17, 229.0, 5.644, null, "+3, +2", "Solid", 1347.0, 2067.0, 7.52, "Lanthanide", 1879.0, 9, 8],
+[63, "Eu", "Europium", "유로퓸", 151.964, "61FFC7", "[Xe]6s2 4f7", null, 233.0, 5.67, null, "+3, +2", "Solid", 1095.0, 1802.0, 5.24, "Lanthanide", 1901.0, 9, 9],
+[64, "Gd", "Gadolinium", "가돌리늄", 157.25, "45FFC7", "[Xe]6s2 4f7 5d1", 1.2, 237.0, 6.15, null, "+3", "Solid", 1586.0, 3546.0, 7.9, "Lanthanide", 1880.0, 9, 10],
+[65, "Tb", "Terbium", "터븀", 158.92535, "30FFC7", "[Xe]6s2 4f9", null, 221.0, 5.864, null, "+3", "Solid", 1629.0, 3503.0, 8.23, "Lanthanide", 1843.0, 9, 11],
+[66, "Dy", "Dysprosium", "디스프로슘", 162.5, "1FFFC7", "[Xe]6s2 4f10", 1.22, 229.0, 5.939, null, "+3", "Solid", 1685.0, 2840.0, 8.55, "Lanthanide", 1886.0, 9, 12],
+[67, "Ho", "Holmium", "홀뮴", 164.93033, "00FF9C", "[Xe]6s2 4f11", 1.23, 216.0, 6.022, null, "+3", "Solid", 1747.0, 2973.0, 8.8, "Lanthanide", 1878.0, 9, 13],
+[68, "Er", "Erbium", "어븀", 167.26, "CCCCCC", "[Xe]6s2 4f12", 1.24, 235.0, 6.108, null, "+3", "Solid", 1802.0, 3141.0, 9.07, "Lanthanide", 1843.0, 9, 14],
+[69, "Tm", "Thulium", "툴륨", 168.93422, "00D452", "[Xe]6s2 4f13", 1.25, 227.0, 6.184, null, "+3", "Solid", 1818.0, 2223.0, 9.32, "Lanthanide", 1879.0, 9, 15],
+[70, "Yb", "Ytterbium", "이터븀", 173.05, "00BF38", "[Xe]6s2 4f14", null, 242.0, 6.254, null, "+3, +2", "Solid", 1092.0, 1469.0, 6.9, "Lanthanide", 1878.0, 9, 16],
+[71, "Lu", "Lutetium", "루테튬", 174.9667, "00AB24", "[Xe]6s2 4f14 5d1", 1.27, 221.0, 5.426, null, "+3", "Solid", 1936.0, 3675.0, 9.84, "Lanthanide", 1907.0, 9, 17],
+[72, "Hf", "Hafnium", "하프늄", 178.49, "4DC2FF", "[Xe]6s2 4f14 5d2", 1.3, 212.0, 6.825, null, "+4", "Solid", 2506.0, 4876.0, 13.3, "Transition metal", 1923.0, 6, 4],
+[73, "Ta", "Tantalum", "탄탈럼", 180.9479, "4DA6FF", "[Xe]6s2 4f14 5d3", 1.5, 217.0, 7.89, 0.322, "+5", "Solid", 3290.0, 5731.0, 16.4, "Transition metal", 1802.0, 6, 5],
+[74, "W", "Tungsten", "텅스텐", 183.84, "2194D6", "[Xe]6s2 4f14 5d4", 2.36, 210.0, 7.98, 0.815, "+6", "Solid", 3695.0, 5828.0, 19.3, "Transition metal", 1783.0, 6, 6],
+[75, "Re", "Rhenium", "레늄", 186.207, "267DAB", "[Xe]6s2 4f14 5d5", 1.9, 217.0, 7.88, 0.15, "+7, +6, +4", "Solid", 3459.0, 5869.0, 20.8, "Transition metal", 1925.0, 6, 7],
+[76, "Os", "Osmium", "오스뮴", 190.2, "266696", "[Xe]6s2 4f14 5d6", 2.2, 216.0, 8.7, 1.1, "+4, +3", "Solid", 3306.0, 5285.0, 22.57, "Transition metal", 1803.0, 6, 8],
+[77, "Ir", "Iridium", "이리듐", 192.22, "175487", "[Xe]6s2 4f14 5d7", 2.2, 202.0, 9.1, 1.565, "+4, +3", "Solid", 2719.0, 4701.0, 22.42, "Transition metal", 1803.0, 6, 9],
+[78, "Pt", "Platinum", "백금", 195.08, "D0D0E0", "[Xe]6s1 4f14 5d9", 2.28, 209.0, 9.0, 2.128, "+4, +2", "Solid", 2041.55, 4098.0, 21.46, "Transition metal", 1735.0, 6, 10],
+[79, "Au", "Gold", "금", 196.96657, "FFD123", "[Xe]6s1 4f14 5d10", 2.54, 166.0, 9.226, 2.309, "+3, +1", "Solid", 1337.33, 3129.0, 19.282, "Transition metal", null, 6, 11],
+[80, "Hg", "Mercury", "수은", 200.59, "B8B8D0", "[Xe]6s2 4f14 5d10", 2.0, 209.0, 10.438, null, "+2, +1", "Liquid", 234.32, 629.88, 13.5336, "Transition metal", null, 6, 12],
+[81, "Tl", "Thallium", "탈륨", 204.383, "A6544D", "[Xe]6s2 4f14 5d10 6p1", 1.62, 196.0, 6.108, 0.2, "+3, +1", "Solid", 577.0, 1746.0, 11.8, "Post-transition metal", 1861.0, 6, 13],
+[82, "Pb", "Lead", "납", 207.0, "575961", "[Xe]6s2 4f14 5d10 6p2", 2.33, 202.0, 7.417, 0.36, "+4, +2", "Solid", 600.61, 2022.0, 11.342, "Post-transition metal", null, 6, 14],
+[83, "Bi", "Bismuth", "비스무트", 208.9804, "9E4FB5", "[Xe]6s2 4f14 5d10 6p3", 2.02, 207.0, 7.289, 0.946, "+5, +3", "Solid", 544.55, 1837.0, 9.807, "Post-transition metal", 1753.0, 6, 15],
+[84, "Po", "Polonium", "폴로늄", 208.98243, "AB5C00", "[Xe]6s2 4f14 5d10 6p4", 2.0, 197.0, 8.417, 1.9, "+4, +2", "Solid", 527.0, 1235.0, 9.32, "Metalloid", 1898.0, 6, 16],
+[85, "At", "Astatine", "아스타틴", 209.98715, "754F45", "[Xe]6s2 4f14 5d10 6p5", 2.2, 202.0, 9.5, 2.8, "7, 5, 3, 1, -1", "Solid", 575.0, null, 7.0, "Halogen", 1940.0, 6, 17],
+[86, "Rn", "Radon", "라돈", 222.01758, "428296", "[Xe]6s2 4f14 5d10 6p6", null, 220.0, 10.745, null, "0", "Gas", 202.0, 211.45, 0.00973, "Noble gas", 1900.0, 6, 18],
+[87, "Fr", "Francium", "프랑슘", 223.01973, "420066", "[Rn]7s1", 0.7, 348.0, 3.9, 0.47, "+1", "Solid", 300.0, null, null, "Alkali metal", 1939.0, 7, 1],
+[88, "Ra", "Radium", "라듐", 226.02541, "007D00", "[Rn]7s2", 0.9, 283.0, 5.279, null, "+2", "Solid", 973.0, 1413.0, 5.0, "Alkaline earth metal", 1898.0, 7, 2],
+[89, "Ac", "Actinium", "악티늄", 227.02775, "70ABFA", "[Rn]7s2 6d1", 1.1, 260.0, 5.17, null, "+3", "Solid", 1324.0, 3471.0, 10.07, "Actinide", 1899.0, 10, 3],
+[90, "Th", "Thorium", "토륨", 232.038, "00BAFF", "[Rn]7s2 6d2", 1.3, 237.0, 6.08, null, "+4", "Solid", 2023.0, 5061.0, 11.72, "Actinide", 1828.0, 10, 4],
+[91, "Pa", "Protactinium", "프로트악티늄", 231.03588, "00A1FF", "[Rn]7s2 5f2 6d1", 1.5, 243.0, 5.89, null, "+5, +4", "Solid", 1845.0, null, 15.37, "Actinide", 1913.0, 10, 5],
+[92, "U", "Uranium", "우라늄", 238.0289, "008FFF", "[Rn]7s2 5f3 6d1", 1.38, 240.0, 6.194, null, "+6, +5, +4, +3", "Solid", 1408.0, 4404.0, 18.95, "Actinide", 1789.0, 10, 6],
+[93, "Np", "Neptunium", "넵투늄", 237.048172, "0080FF", "[Rn]7s2 5f4 6d1", 1.36, 221.0, 6.266, null, "+6, +5, +4, +3", "Solid", 917.0, 4175.0, 20.25, "Actinide", 1940.0, 10, 7],
+[94, "Pu", "Plutonium", "플루토늄", 244.0642, "006BFF", "[Rn]7s2 5f6", 1.28, 243.0, 6.06, null, "+6, +5, +4, +3", "Solid", 913.0, 3501.0, 19.84, "Actinide", 1940.0, 10, 8],
+[95, "Am", "Americium", "아메리슘", 243.06138, "545CF2", "[Rn]7s2 5f7", 1.3, 244.0, 5.993, null, "+6, +5, +4, +3", "Solid", 1449.0, 2284.0, 13.69, "Actinide", 1944.0, 10, 9],
+[96, "Cm", "Curium", "퀴륨", 247.07035, "785CE3", "[Rn]7s2 5f7 6d1", 1.3, 245.0, 6.02, null, "+3", "Solid", 1618.0, 3400.0, 13.51, "Actinide", 1944.0, 10, 10],
+[97, "Bk", "Berkelium", "버클륨", 247.07031, "8A4FE3", "[Rn]7s2 5f9", 1.3, 244.0, 6.23, null, "+4, +3", "Solid", 1323.0, null, 14.0, "Actinide", 1949.0, 10, 11],
+[98, "Cf", "Californium", "캘리포늄", 251.07959, "A136D4", "[Rn]7s2 5f10", 1.3, 245.0, 6.3, null, "+3", "Solid", 1173.0, null, null, "Actinide", 1950.0, 10, 12],
+[99, "Es", "Einsteinium", "아인슈타이늄", 252.083, "B31FD4", "[Rn]7s2 5f11", 1.3, 245.0, 6.42, null, "+3", "Solid", 1133.0, null, null, "Actinide", 1952.0, 10, 13],
+[100, "Fm", "Fermium", "페르뮴", 257.09511, "B31FBA", "[Rn] 5f12 7s2", 1.3, null, 6.5, null, "+3", "Solid", 1800.0, null, null, "Actinide", 1952.0, 10, 14],
+[101, "Md", "Mendelevium", "멘델레븀", 258.09843, "B30DA6", "[Rn]7s2 5f13", 1.3, null, 6.58, null, "+3, +2", "Solid", 1100.0, null, null, "Actinide", 1955.0, 10, 15],
+[102, "No", "Nobelium", "노벨륨", 259.101, "BD0D87", "[Rn]7s2 5f14", 1.3, null, 6.65, null, "+3, +2", "Solid", 1100.0, null, null, "Actinide", 1957.0, 10, 16],
+[103, "Lr", "Lawrencium", "로렌슘", 266.12, "C70066", "[Rn]7s2 5f14 6d1", 1.3, null, null, null, "+3", "Solid", 1900.0, null, null, "Actinide", 1961.0, 10, 17],
+[104, "Rf", "Rutherfordium", "러더포듐", 267.122, "CC0059", "[Rn]7s2 5f14 6d2", null, null, null, null, "+4", "Solid", null, null, null, "Transition metal", 1964.0, 7, 4],
+[105, "Db", "Dubnium", "더브늄", 268.126, "D1004F", "[Rn]7s2 5f14 6d3", null, null, null, null, "5, 4, 3", "Solid", null, null, null, "Transition metal", 1967.0, 7, 5],
+[106, "Sg", "Seaborgium", "시보귬", 269.128, "D90045", "[Rn]7s2 5f14 6d4", null, null, null, null, "6, 5, 4, 3, 0", "Solid", null, null, null, "Transition metal", 1974.0, 7, 6],
+[107, "Bh", "Bohrium", "보륨", 270.133, "E00038", "[Rn]7s2 5f14 6d5", null, null, null, null, "7, 5, 4, 3", "Solid", null, null, null, "Transition metal", 1976.0, 7, 7],
+[108, "Hs", "Hassium", "하슘", 269.1336, "E6002E", "[Rn]7s2 5f14 6d6", null, null, null, null, "8, 6, 5, 4, 3, 2", "Solid", null, null, null, "Transition metal", 1984.0, 7, 8],
+[109, "Mt", "Meitnerium", "마이트너륨", 277.154, "EB0026", "[Rn]7s2 5f14 6d7 (calculated)", null, null, null, null, "9, 8, 6, 4, 3, 1", "Solid", null, null, null, "Transition metal", 1982.0, 7, 9],
+[110, "Ds", "Darmstadtium", "다름슈타튬", 282.166, "CCCCCC", "[Rn]7s2 5f14 6d8 (predicted)", null, null, null, null, "8, 6, 4, 2, 0", "Expected to be a Solid", null, null, null, "Transition metal", 1994.0, 7, 10],
+[111, "Rg", "Roentgenium", "뢴트게늄", 282.169, "CCCCCC", "[Rn]7s2 5f14 6d9 (predicted)", null, null, null, null, "5, 3, 1, -1", "Expected to be a Solid", null, null, null, "Transition metal", 1994.0, 7, 11],
+[112, "Cn", "Copernicium", "코페르니슘", 286.179, "CCCCCC", "[Rn]7s2 5f14 6d10 (predicted)", null, null, null, null, "2, 1, 0", "Expected to be a Solid", null, null, null, "Transition metal", 1996.0, 7, 12],
+[113, "Nh", "Nihonium", "니호늄", 286.182, "CCCCCC", "[Rn]5f14 6d10 7s2 7p1 (predicted)", null, null, null, null, "", "Expected to be a Solid", null, null, null, "Post-transition metal", 2004.0, 7, 13],
+[114, "Fl", "Flerovium", "플레로븀", 290.192, "CCCCCC", "[Rn]7s2 7p2 5f14 6d10 (predicted)", null, null, null, null, "6, 4,2, 1, 0", "Expected to be a Solid", null, null, null, "Post-transition metal", 1998.0, 7, 14],
+[115, "Mc", "Moscovium", "모스코븀", 290.196, "CCCCCC", "[Rn]7s2 7p3 5f14 6d10 (predicted)", null, null, null, null, "3, 1", "Expected to be a Solid", null, null, null, "Post-transition metal", 2003.0, 7, 15],
+[116, "Lv", "Livermorium", "리버모륨", 293.205, "CCCCCC", "[Rn]7s2 7p4 5f14 6d10 (predicted)", null, null, null, null, "+4, +2, -2", "Expected to be a Solid", null, null, null, "Post-transition metal", 2000.0, 7, 16],
+[117, "Ts", "Tennessine", "테네신", 294.211, "CCCCCC", "[Rn]7s2 7p5 5f14 6d10 (predicted)", null, null, null, null, "+5, +3, +1, -1", "Expected to be a Solid", null, null, null, "Halogen", 2010.0, 7, 17],
+[118, "Og", "Oganesson", "오가네손", 295.216, "CCCCCC", "[Rn]7s2 7p6 5f14 6d10 (predicted)", null, null, null, null, "+6, +4, +2, +1, 0, -1", "Expected to be a Gas", null, null, null, "Noble gas", 2006.0, 7, 18]
+];
+/* ============ 필드 정의 ============ */
+const COLS=["AtomicNumber","Symbol","Name","KoName","AtomicMass","CPKHexColor","ElectronConfiguration",
+"Electronegativity","AtomicRadius","IonizationEnergy","ElectronAffinity","OxidationStates","StandardState",
+"MeltingPoint","BoilingPoint","Density","GroupBlock","YearDiscovered","period","group"];
+
+const FIELDS={
+ AtomicNumber:{ko:"원자번호",t:"num",u:""},
+ Symbol:{ko:"원소 기호",t:"cat",u:""},
+ Name:{ko:"원소 이름(영문)",t:"cat",u:""},
+ KoName:{ko:"원소 이름(한글)",t:"cat",u:""},
+ AtomicMass:{ko:"원자량",t:"num",u:"u"},
+ CPKHexColor:{ko:"CPK 색상",t:"cat",u:""},
+ ElectronConfiguration:{ko:"전자 배치",t:"cat",u:""},
+ Electronegativity:{ko:"전기음성도",t:"num",u:""},
+ AtomicRadius:{ko:"원자 반지름",t:"num",u:"pm"},
+ IonizationEnergy:{ko:"이온화 에너지",t:"num",u:"eV"},
+ ElectronAffinity:{ko:"전자 친화도",t:"num",u:"eV"},
+ OxidationStates:{ko:"산화수",t:"cat",u:""},
+ StandardState:{ko:"상온에서의 상태",t:"cat",u:""},
+ MeltingPoint:{ko:"녹는점",t:"num",u:"K"},
+ BoilingPoint:{ko:"끓는점",t:"num",u:"K"},
+ Density:{ko:"밀도",t:"num",u:"g/cm³"},
+ GroupBlock:{ko:"원소 분류",t:"cat",u:""},
+ YearDiscovered:{ko:"발견 연도",t:"num",u:"년"},
+ period:{ko:"주기",t:"num",u:""},
+ group:{ko:"족(가로 위치)",t:"num",u:""}
+};
+const PICKABLE=["AtomicNumber","Symbol","Name","KoName","AtomicMass","CPKHexColor","ElectronConfiguration",
+"Electronegativity","AtomicRadius","IonizationEnergy","ElectronAffinity","OxidationStates","StandardState",
+"MeltingPoint","BoilingPoint","Density","GroupBlock","YearDiscovered"];
+
+const GKO={"Alkali metal":"알칼리 금속","Alkaline earth metal":"알칼리 토금속","Transition metal":"전이 금속",
+"Post-transition metal":"전이후 금속","Metalloid":"준금속","Nonmetal":"비금속","Halogen":"할로젠",
+"Noble gas":"비활성 기체","Lanthanide":"란타넘족","Actinide":"악티늄족"};
+const GCOL={"Alkali metal":"#D9603B","Alkaline earth metal":"#DFA22E","Transition metal":"#3E8CA8",
+"Post-transition metal":"#6B7E8C","Metalloid":"#8A6BB5","Nonmetal":"#3F9E7C","Halogen":"#2F7FBF",
+"Noble gas":"#A24E86","Lanthanide":"#B08A3A","Actinide":"#7C5A3C"};
+const SKO={"Solid":"고체","Liquid":"액체","Gas":"기체","Expected to be a Solid":"고체로 예상","Expected to be a Gas":"기체로 예상"};
+const SCOL={"Solid":"#55707F","Liquid":"#2F7FBF","Gas":"#3F9E7C","Expected to be a Solid":"#A9B6BE","Expected to be a Gas":"#9CC7B4"};
+
+const DATA=RAW.map(r=>{const o={};COLS.forEach((c,i)=>o[c]=r[i]);return o;});
+
+/* ============ 저장소 (캔버스: localStorage / 미지원 환경: 메모리) ============ */
+const mem={};
+const store={
+  get(k){try{const v=localStorage.getItem(k);return v===null?(k in mem?mem[k]:null):v;}catch(e){return k in mem?mem[k]:null;}},
+  set(k,v){mem[k]=v;try{localStorage.setItem(k,v);}catch(e){}}
+};
+const load=(k,d)=>{const v=store.get(k);if(v===null)return d;try{return JSON.parse(v);}catch(e){return d;}};
+const save=(k,v)=>store.set(k,JSON.stringify(v));
+
+let subs=load("pt_subs",[]);
+let cfg=load("pt_cfg",{});
+let PW=load("pt_pw","1234");
+
+/* ============ 상태 ============ */
+const S={x:"AtomicNumber",y:"AtomicRadius",chart:"scatter",color:"GroupBlock",
+  logX:false,logY:false,label:false,trend:true,zMin:1,zMax:118,
+  off:new Set(),sel:null};
+
+const $=id=>document.getElementById(id);
+const num=v=>typeof v==="number"&&isFinite(v);
+const fmt=v=>{if(!num(v))return"—";const a=Math.abs(v);
+  if(a!==0&&(a<0.001||a>=1e6))return v.toExponential(2);
+  return (Math.round(v*1000)/1000).toLocaleString("ko-KR");};
+const label=k=>FIELDS[k].ko+(FIELDS[k].u?` (${FIELDS[k].u})`:"");
+const kolabel=(k,v)=>k==="GroupBlock"?(GKO[v]||v):k==="StandardState"?(SKO[v]||v):v;
+
+/* ============ 초기화 ============ */
+function init(){
+  ["selX","selY"].forEach(id=>{
+    $(id).innerHTML=PICKABLE.map(k=>`<option value="${k}">${label(k)}</option>`).join("");
+  });
+  $("selX").value=S.x; $("selY").value=S.y;
+  $("groupChips").innerHTML=Object.keys(GKO).map(g=>
+    `<button class="chip" data-g="${g}" onclick="toggleG('${g}')"><i class="dot" style="background:${GCOL[g]}"></i>${GKO[g]}</button>`).join("")
+    +`<button class="chip" onclick="allG(true)" style="border-style:dashed">전체 켜기</button>`
+    +`<button class="chip" onclick="allG(false)" style="border-style:dashed">전체 끄기</button>`;
+  $("selX").onchange=e=>{S.x=e.target.value;draw();};
+  $("selY").onchange=e=>{S.y=e.target.value;draw();};
+  $("selChart").onchange=e=>{S.chart=e.target.value;draw();};
+  $("selColor").onchange=e=>{S.color=e.target.value;draw();};
+  $("chkLogX").onchange=e=>{S.logX=e.target.checked;draw();};
+  $("chkLogY").onchange=e=>{S.logY=e.target.checked;draw();};
+  $("chkLabel").onchange=e=>{S.label=e.target.checked;draw();};
+  $("chkTrend").onchange=e=>{S.trend=e.target.checked;draw();};
+  $("zMin").onchange=e=>{S.zMin=+e.target.value||1;draw();};
+  $("zMax").onchange=e=>{S.zMax=+e.target.value||118;draw();};
+  buildCompChips(); restoreCfg(); draw();
+}
+function toggleG(g){S.off.has(g)?S.off.delete(g):S.off.add(g);syncChips();draw();}
+function allG(on){S.off=on?new Set():new Set(Object.keys(GKO));syncChips();draw();}
+function syncChips(){document.querySelectorAll("#groupChips .chip[data-g]").forEach(c=>
+  c.classList.toggle("off",S.off.has(c.dataset.g)));}
+
+function rows(){return DATA.filter(d=>!S.off.has(d.GroupBlock)&&d.AtomicNumber>=S.zMin&&d.AtomicNumber<=S.zMax);}
+
+/* ============ 색 ============ */
+function colorOf(d,vmin,vmax){
+  if(S.color==="CPKHexColor")return"#"+d.CPKHexColor;
+  if(S.color==="StandardState")return SCOL[d.StandardState]||"#888";
+  if(S.color==="value"){const v=d[S.y];if(!num(v))return"#D6DEE3";
+    const t=vmax>vmin?(v-vmin)/(vmax-vmin):0.5;return ramp(t);}
+  return GCOL[d.GroupBlock]||"#888";
+}
+function ramp(t){t=Math.max(0,Math.min(1,t));
+  const a=[240,246,248],b=[15,110,122],c=[38,32,64];
+  let r,g,bl;
+  if(t<0.6){const k=t/0.6;r=a[0]+(b[0]-a[0])*k;g=a[1]+(b[1]-a[1])*k;bl=a[2]+(b[2]-a[2])*k;}
+  else{const k=(t-0.6)/0.4;r=b[0]+(c[0]-b[0])*k;g=b[1]+(c[1]-b[1])*k;bl=b[2]+(c[2]-b[2])*k;}
+  return`rgb(${r|0},${g|0},${bl|0})`;
+}
+const dark=hex=>{const h=hex.replace("#","");const r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16);
+  return (0.299*r+0.587*g+0.114*b)<150;};
+
+/* ============ 눈금 ============ */
+function ticks(min,max,n=6){
+  if(!isFinite(min)||!isFinite(max))return[0];
+  if(min===max)return[min];
+  const raw=(max-min)/n,mag=Math.pow(10,Math.floor(Math.log10(raw))),norm=raw/mag;
+  const step=(norm<1.5?1:norm<3?2:norm<7?5:10)*mag;
+  const out=[];for(let v=Math.ceil(min/step)*step;v<=max+step*1e-9;v+=step)out.push(+v.toFixed(10));
+  return out;
+}
+function makeScale(key,vals,logOn,p0,p1){
+  const F=FIELDS[key];
+  if(F.t==="cat"){
+    const cats=[...new Set(vals.filter(v=>v!==null&&v!==""))].sort((a,b)=>String(a).localeCompare(String(b),"ko"));
+    const band=(p1-p0)/Math.max(cats.length,1);
+    return{type:"cat",cats,f:v=>{const i=cats.indexOf(v);return i<0?null:p0+band*(i+0.5);},
+      ticks:cats.map((c,i)=>({v:p0+band*(i+0.5),t:kolabel(key,c)})),band};
+  }
+  const ns=vals.filter(num).filter(v=>!logOn||v>0);
+  let lo=Math.min(...ns),hi=Math.max(...ns);
+  if(!isFinite(lo)){lo=0;hi=1;}
+  if(logOn){
+    const l0=Math.log10(lo),l1=Math.log10(hi),pad=(l1-l0||1)*0.05;
+    const a=l0-pad,b=l1+pad;
+    const tk=[];for(let e=Math.floor(a);e<=Math.ceil(b);e++)if(e>=a&&e<=b)tk.push(e);
+    return{type:"log",lo:a,hi:b,f:v=>num(v)&&v>0?p0+(Math.log10(v)-a)/(b-a)*(p1-p0):null,
+      ticks:tk.map(e=>({v:p0+(e-a)/(b-a)*(p1-p0),t:"1e"+e}))};
+  }
+  const pad=(hi-lo||Math.abs(hi)||1)*0.06;lo-=pad;hi+=pad;
+  return{type:"lin",lo,hi,f:v=>num(v)?p0+(v-lo)/(hi-lo)*(p1-p0):null,
+    ticks:ticks(lo,hi).map(t=>({v:p0+(t-lo)/(hi-lo)*(p1-p0),t:fmt(t)}))};
+}
+/* ============ 그래프 ============ */
+const W=760,H=470,M={l:70,r:16,t:16,b:58};
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
+
+function draw(){
+  const R=rows();
+  const isLine=S.chart==="line", isBar=S.chart==="bar";
+  const xKey=isLine?"AtomicNumber":S.x, yKey=S.y;
+  if(isLine)$("selX").disabled=true;else $("selX").disabled=false;
+  $("chartTitle").textContent=isLine?`원자번호에 따른 ${FIELDS[yKey].ko}`
+    :isBar?`${FIELDS[xKey].ko}별 ${FIELDS[yKey].ko}`
+    :`${FIELDS[xKey].ko} – ${FIELDS[yKey].ko}`;
+  $("ptVar").textContent=FIELDS[yKey].ko;
+
+  const yv=R.map(d=>d[yKey]).filter(num);
+  const vmin=Math.min(...yv),vmax=Math.max(...yv);
+  const px0=M.l,px1=W-M.r,py0=H-M.b,py1=M.t;
+  let svg="",pts=[];
+
+  const countMode=isBar&&FIELDS[yKey].t==="cat";
+  if(isBar&&(FIELDS[xKey].t==="cat"||countMode)){
+    /* 범주별 평균 막대 (Y가 숫자) 또는 개수 막대 (Y가 범주) */
+    const map={};R.forEach(d=>{const k=d[xKey];if(k===""||k==null)return;(map[k]=map[k]||[]).push(d[yKey]);});
+    const cats=Object.keys(map).sort((a,b)=>String(a).localeCompare(String(b),"ko"));
+    const means=cats.map(c=>countMode?map[c].length:(()=>{const a=map[c].filter(num);return a.length?a.reduce((s,v)=>s+v,0)/a.length:null;})());
+    const sy=makeScale(countMode?"AtomicNumber":yKey,means.concat([0]),false,py0,py1);
+    svg+=grid(sy,"y");
+    const bw=(px1-px0)/Math.max(cats.length,1);
+    cats.forEach((c,i)=>{
+      const m=means[i];if(!num(m))return;
+      const y=sy.f(m),y0=sy.f(0)??py0;
+      const col=xKey==="GroupBlock"?(GCOL[c]||"#3E8CA8"):xKey==="StandardState"?(SCOL[c]||"#3E8CA8"):"#3E8CA8";
+      svg+=`<rect class="pt" x="${px0+bw*i+bw*0.16}" y="${Math.min(y,y0)}" width="${bw*0.68}" height="${Math.abs(y0-y)}"
+        fill="${col}" data-cat="${esc(c)}" data-val="${m}" data-mode="${countMode?"count":"mean"}"></rect>`;
+      if(cats.length<=16)svg+=`<text class="tick" x="${px0+bw*(i+0.5)}" y="${py0+14}" text-anchor="middle">${esc(cutTxt(kolabel(xKey,c),9))}</text>`;
+    });
+    svg+=axes(null,sy,xKey,yKey,true,countMode?"원소 개수 (개)":null);
+    render(svg,R,yKey);statBox(R,xKey,yKey,null);ptable(yKey,vmin,vmax);return;
+  }
+
+  /* 산점도 / 꺾은선 / 원소별 막대 */
+  const sx=makeScale(xKey,R.map(d=>d[xKey]),S.logX&&!isLine,px0,px1);
+  const sy=makeScale(yKey,R.map(d=>d[yKey]),S.logY,py0,py1);
+  svg+=grid(sy,"y")+grid(sx,"x");
+
+  const jit=(d,s)=>s.type==="cat"?((d.AtomicNumber*37)%100/100-0.5)*s.band*0.62:0;
+
+  if(isBar){
+    const arr=R.filter(d=>num(d[yKey])&&sx.f(d[xKey])!==null).sort((a,b)=>(a[xKey]>b[xKey]?1:-1));
+    const bw=Math.max(1.6,(px1-px0)/Math.max(arr.length,1)*0.72);
+    const y0=sy.type==="log"?py0:(sy.f(0)!==null&&sy.f(0)<=py0&&sy.f(0)>=py1?sy.f(0):py0);
+    arr.forEach(d=>{const x=sx.f(d[xKey]),y=sy.f(d[yKey]);
+      svg+=`<rect class="pt" x="${x-bw/2}" y="${Math.min(y,y0)}" width="${bw}" height="${Math.max(Math.abs(y0-y),1)}"
+        fill="${colorOf(d,vmin,vmax)}" data-z="${d.AtomicNumber}"></rect>`;});
+    pts=arr;
+  }else{
+    if(isLine){
+      const arr=R.filter(d=>num(d[yKey])&&sx.f(d[xKey])!==null).sort((a,b)=>a.AtomicNumber-b.AtomicNumber);
+      let path="",prev=null;
+      arr.forEach(d=>{const x=sx.f(d[xKey]),y=sy.f(d[yKey]);
+        path+=(prev!==null&&d.AtomicNumber-prev<=3?"L":"M")+x.toFixed(1)+" "+y.toFixed(1)+" ";prev=d.AtomicNumber;});
+      svg+=`<path d="${path}" fill="none" stroke="#0F6E7A" stroke-width="1.3" opacity=".62"/>`;
+    }
+    R.forEach(d=>{const x=sx.f(d[xKey]),y=sy.f(d[yKey]);if(x===null||y===null)return;
+      const c=colorOf(d,vmin,vmax);
+      svg+=`<circle class="pt" cx="${(x+jit(d,sx)).toFixed(1)}" cy="${(y+jit(d,sy)).toFixed(1)}" r="${S.sel===d.AtomicNumber?7.5:4.6}"
+        fill="${c}" data-z="${d.AtomicNumber}"></circle>`;
+      if(S.label)svg+=`<text class="plabel" x="${(x+jit(d,sx)+6).toFixed(1)}" y="${(y+jit(d,sy)-5).toFixed(1)}">${d.Symbol}</text>`;
+      pts.push(d);});
+  }
+
+  /* 추세선 + 상관계수 */
+  let r=null;
+  if(S.trend&&!isBar&&FIELDS[xKey].t==="num"&&FIELDS[yKey].t==="num"){
+    const P=R.filter(d=>num(d[xKey])&&num(d[yKey])&&(!S.logX||d[xKey]>0)&&(!S.logY||d[yKey]>0))
+      .map(d=>[S.logX?Math.log10(d[xKey]):d[xKey],S.logY?Math.log10(d[yKey]):d[yKey]]);
+    if(P.length>2){
+      const n=P.length,mx=P.reduce((s,p)=>s+p[0],0)/n,my=P.reduce((s,p)=>s+p[1],0)/n;
+      let sxy=0,sxx=0,syy=0;P.forEach(p=>{sxy+=(p[0]-mx)*(p[1]-my);sxx+=(p[0]-mx)**2;syy+=(p[1]-my)**2;});
+      r=sxy/Math.sqrt(sxx*syy);const b=sxy/sxx,a=my-b*mx;
+      const inv=(v,log)=>log?Math.pow(10,v):v;
+      const xs=P.map(p=>p[0]),x1=Math.min(...xs),x2=Math.max(...xs);
+      const X1=sx.f(inv(x1,S.logX)),X2=sx.f(inv(x2,S.logX)),Y1=sy.f(inv(a+b*x1,S.logY)),Y2=sy.f(inv(a+b*x2,S.logY));
+      if([X1,X2,Y1,Y2].every(v=>v!==null&&isFinite(v)))svg+=`<line class="trend" x1="${X1}" y1="${Y1}" x2="${X2}" y2="${Y2}"/>`;
+    }
+  }
+  svg+=axes(sx,sy,xKey,yKey,false);
+  render(svg,pts,yKey);statBox(R,xKey,yKey,r);ptable(yKey,vmin,vmax);
+}
+const cutTxt=(s,n)=>String(s).length>n?String(s).slice(0,n-1)+"…":String(s);
+
+function grid(s,d){let o="";(s.ticks||[]).forEach(t=>{
+  o+=d==="y"?`<line class="gl" x1="${M.l}" y1="${t.v}" x2="${W-M.r}" y2="${t.v}"/>`
+            :`<line class="gl" x1="${t.v}" y1="${M.t}" x2="${t.v}" y2="${H-M.b}"/>`;});return o;}
+
+function axes(sx,sy,xKey,yKey,barCat,yTitle){
+  let o=`<line class="ax" x1="${M.l}" y1="${H-M.b}" x2="${W-M.r}" y2="${H-M.b}"/>
+         <line class="ax" x1="${M.l}" y1="${M.t}" x2="${M.l}" y2="${H-M.b}"/>`;
+  if(sy)sy.ticks.forEach(t=>o+=`<text class="tick" x="${M.l-7}" y="${t.v+3.5}" text-anchor="end">${esc(cutTxt(t.t,12))}</text>`);
+  if(sx&&!barCat){
+    const step=Math.ceil(sx.ticks.length/14);
+    sx.ticks.forEach((t,i)=>{if(i%step)return;
+      o+=`<text class="tick" x="${t.v}" y="${H-M.b+14}" text-anchor="middle"${sx.type==="cat"?` transform="rotate(-28 ${t.v} ${H-M.b+14})"`:""}>${esc(cutTxt(t.t,11))}</text>`;});
+  }
+  o+=`<text class="axis-title" x="${(M.l+W-M.r)/2}" y="${H-8}" text-anchor="middle">${esc(label(S.chart==="line"?"AtomicNumber":xKey))}${S.logX&&S.chart!=="line"?" · 로그":""}</text>`;
+  o+=`<text class="axis-title" x="${-(M.t+H-M.b)/2}" y="14" text-anchor="middle" transform="rotate(-90)">${esc(yTitle||label(yKey))}${S.logY&&!yTitle?" · 로그":""}</text>`;
+  return o;
+}
+
+function render(svg,pts,yKey){
+  const el=$("chart");el.innerHTML=svg;
+  el.querySelectorAll(".pt").forEach(n=>{
+    const z=+n.dataset.z;
+    n.onmousemove=e=>{
+      if(n.dataset.cat!==undefined){showTip(e,`<b>${esc(kolabel(S.x,n.dataset.cat))}</b><br>${n.dataset.mode==="count"?`원소 개수: ${n.dataset.val}개`:`평균 ${FIELDS[yKey].ko}: ${fmt(+n.dataset.val)} ${FIELDS[yKey].u}`}`);return;}
+      const d=DATA[z-1];showTip(e,`<b>${d.Symbol} · ${d.KoName}</b><br>${label(S.chart==="line"?"AtomicNumber":S.x)}: ${valTxt(d,S.chart==="line"?"AtomicNumber":S.x)}<br>${label(yKey)}: ${valTxt(d,yKey)}`);};
+    n.onmouseleave=()=>$("tip").style.display="none";
+    if(z)n.onclick=()=>select(z);
+  });
+}
+const valTxt=(d,k)=>FIELDS[k].t==="num"?fmt(d[k]):(kolabel(k,d[k])||"—");
+function showTip(e,html){const t=$("tip");t.innerHTML=html;t.style.display="block";
+  t.style.left=Math.min(e.clientX+14,innerWidth-245)+"px";t.style.top=(e.clientY+16)+"px";}
+
+/* ============ 통계 ============ */
+function statBox(R,xKey,yKey,r){
+  const v=R.map(d=>d[yKey]).filter(num).sort((a,b)=>a-b);
+  const miss=R.length-R.filter(d=>FIELDS[yKey].t==="num"?num(d[yKey]):d[yKey]!=="").length;
+  const mean=v.length?v.reduce((s,a)=>s+a,0)/v.length:NaN;
+  const med=v.length?(v.length%2?v[(v.length-1)/2]:(v[v.length/2-1]+v[v.length/2])/2):NaN;
+  let h=`<div class="stat"><span>화면에 그려진 원소</span><span>${R.length}개</span></div>
+   <div class="stat"><span>값이 없는 원소</span><span>${miss}개</span></div>`;
+  if(FIELDS[yKey].t==="num"&&v.length){
+    h+=`<div class="stat"><span>가장 작은 값</span><span>${fmt(v[0])}</span></div>
+        <div class="stat"><span>가장 큰 값</span><span>${fmt(v[v.length-1])}</span></div>
+        <div class="stat"><span>평균</span><span>${fmt(mean)}</span></div>
+        <div class="stat"><span>중앙값</span><span>${fmt(med)}</span></div>`;
+    const top=R.filter(d=>num(d[yKey])).sort((a,b)=>b[yKey]-a[yKey]).slice(0,3)
+      .map(d=>`${d.Symbol}(${fmt(d[yKey])})`).join(", ");
+    h+=`<div class="stat"><span>상위 3</span><span style="text-align:right">${top}</span></div>`;
+  }
+  if(r!==null&&isFinite(r)){
+    const s=Math.abs(r)>0.8?"매우 뚜렷":Math.abs(r)>0.5?"뚜렷":Math.abs(r)>0.3?"약함":"거의 없음";
+    h+=`<div class="stat"><span>상관계수 r</span><span>${r.toFixed(3)}</span></div>
+        <div class="stat"><span>관계</span><span>${r>0?"양":"음"}의 상관 · ${s}</span></div>`;
+  }else if(FIELDS[xKey].t==="num"&&FIELDS[yKey].t==="num"){
+    h+=`<p class="hint" style="margin:8px 0 0">추세선을 켜면 상관계수가 나타납니다.</p>`;
+  }
+  h+=`<p class="hint" style="margin:10px 0 0">상관관계가 곧 인과관계는 아닙니다. 왜 그런 관계가 나타나는지 설명할 수 있어야 합니다.</p>`;
+  $("statBox").innerHTML=h;
+}
+
+/* ============ 원소 카드 ============ */
+function select(z){S.sel=S.sel===z?null:z;draw();ecard();}
+function ecard(){
+  if(!S.sel){$("ecardName").textContent="클릭해 보세요";
+    $("ecard").innerHTML=`<p class="hint">그래프의 점이나 아래 주기율표의 칸을 클릭하면 그 원소의 자료가 모두 나타납니다.</p>`;return;}
+  const d=DATA[S.sel-1],bg="#"+d.CPKHexColor;
+  $("ecardName").textContent=`${d.KoName} ${d.Symbol}`;
+  const keys=["AtomicMass","Electronegativity","AtomicRadius","IonizationEnergy","ElectronAffinity",
+    "MeltingPoint","BoilingPoint","Density","ElectronConfiguration","OxidationStates","StandardState","GroupBlock","YearDiscovered"];
+  $("ecard").innerHTML=`<div class="ecard-top">
+    <div class="ebox" style="background:${bg};color:${dark(bg)?"#fff":"#101A22"}">
+      <div class="z">${d.AtomicNumber}</div><div class="sym">${d.Symbol}</div></div>
+    <div><div style="font-weight:600">${d.KoName}</div>
+      <div class="mono" style="font-size:12px;color:var(--ink-3)">${d.Name}</div>
+      <div style="font-size:12px;margin-top:2px">${GKO[d.GroupBlock]||d.GroupBlock} · ${d.period}주기</div></div></div>
+    <dl class="kv">${keys.map(k=>`<dt>${FIELDS[k].ko}</dt><dd>${esc(valTxt(d,k))}${FIELDS[k].u&&num(d[k])?" "+FIELDS[k].u:""}</dd>`).join("")}</dl>`;
+}
+
+/* ============ 주기율표 ============ */
+function ptable(yKey,vmin,vmax){
+  const R=new Set(rows().map(d=>d.AtomicNumber));
+  const numeric=FIELDS[yKey].t==="num";
+  const cells=[];const at={};
+  DATA.forEach(d=>at[d.period+"-"+d.group]=d);
+  for(let p=1;p<=10;p++){
+    if(p===8){cells.push(`<div style="grid-column:1/-1;height:7px"></div>`);continue;}
+    for(let g=1;g<=18;g++){
+      const d=at[p+"-"+g];
+      if(!d){cells.push(`<div></div>`);continue;}
+      const v=d[yKey];const has=numeric?num(v):(v!==""&&v!=null);
+      let bg="#EEF2F4",fg="#101A22";
+      if(has&&numeric){bg=ramp(vmax>vmin?(v-vmin)/(vmax-vmin):0.5);fg=dark(rgbToHex(bg))?"#fff":"#101A22";}
+      else if(has&&!numeric){bg=yKey==="GroupBlock"?GCOL[v]:yKey==="StandardState"?SCOL[v]:yKey==="CPKHexColor"?"#"+v:"#B9C6CD";
+        fg=dark(bg.startsWith("#")?bg:"#888888")?"#fff":"#101A22";}
+      cells.push(`<div class="cell ${has?"":"nodata"} ${R.has(d.AtomicNumber)?"":"dim"} ${S.sel===d.AtomicNumber?"sel":""}"
+        style="background:${bg};color:${fg}" onclick="select(${d.AtomicNumber})"
+        onmousemove="ptTip(event,${d.AtomicNumber})" onmouseleave="document.getElementById('tip').style.display='none'">
+        <div class="n">${d.AtomicNumber}</div><div class="s">${d.Symbol}</div></div>`);
+    }
+  }
+  $("ptable").innerHTML=cells.join("");
+  if(numeric){$("legMin").textContent=fmt(vmin);$("legMax").textContent=fmt(vmax);
+    $("legBar").style.background=`linear-gradient(90deg,${ramp(0)},${ramp(.3)},${ramp(.6)},${ramp(1)})`;}
+  else{$("legMin").textContent="";$("legMax").textContent="분류별 색";
+    $("legBar").style.background="linear-gradient(90deg,#D9603B,#DFA22E,#3E8CA8,#8A6BB5,#3F9E7C,#A24E86)";}
+}
+function rgbToHex(s){const m=s.match(/\d+/g);if(!m)return"#888888";
+  return"#"+m.slice(0,3).map(v=>(+v).toString(16).padStart(2,"0")).join("");}
+function ptTip(e,z){const d=DATA[z-1];
+  showTip(e,`<b>${d.Symbol} · ${d.KoName}</b><br>${label(S.y)}: ${valTxt(d,S.y)}<br>${GKO[d.GroupBlock]||d.GroupBlock}`);}
+/* ============ 화면 전환 ============ */
+function setMode(m){
+  $("viewStudent").classList.toggle("hidden",m!=="student");
+  $("viewTeacher").classList.toggle("hidden",m!=="teacher");
+  $("mStudent").classList.toggle("on",m==="student");
+  $("mTeacher").classList.toggle("on",m==="teacher");
+  if(m==="teacher"&&$("dash").classList.contains("hidden"))setTimeout(()=>$("pw").focus(),50);
+  scrollTo({top:0});
+}
+
+/* ============ 다운로드 ============ */
+function dl(name,text,type){
+  const b=new Blob(["\ufeff"+text],{type:type||"text/csv;charset=utf-8"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=name;a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+}
+const q=s=>`"${String(s??"").replace(/"/g,'""')}"`;
+function downloadSVG(){
+  const s=$("chart").cloneNode(true);
+  s.setAttribute("xmlns","http://www.w3.org/2000/svg");
+  s.insertAdjacentHTML("afterbegin",`<rect width="${W}" height="${H}" fill="#fff"/>
+  <style>.tick{font-family:monospace;font-size:10px;fill:#7C8D97}.axis-title{font-size:12px;fill:#43555F}
+  .gl{stroke:#E3E9ED}.ax{stroke:#101A22}.plabel{font-family:monospace;font-size:9.5px;fill:#43555F}
+  .trend{stroke:#B3402E;stroke-width:1.4;stroke-dasharray:5 4}.pt{stroke:rgba(16,26,34,.55);stroke-width:.9}</style>`);
+  dl(`graph_${S.x}_${S.y}.svg`,s.outerHTML,"image/svg+xml");
+}
+function downloadFiltered(){
+  const ks=PICKABLE;
+  const rowsCsv=[ks.map(k=>q(FIELDS[k].ko)).join(",")].concat(
+    rows().map(d=>ks.map(k=>q(d[k])).join(",")));
+  dl("elements_filtered.csv",rowsCsv.join("\n"));
+}
+
+/* ============ 학생 제출 ============ */
+function submitWork(){
+  const cls=$("sClass").value.trim(),no=$("sNo").value.trim(),nm=$("sName").value.trim();
+  if(!nm||!cls){$("subMsg").textContent="학반과 이름을 먼저 적어 주세요.";return;}
+  if(!$("sObs").value.trim()){$("subMsg").textContent="1번 관찰 내용을 적어야 제출할 수 있습니다.";return;}
+  subs.push({id:Date.now()+"-"+Math.random().toString(36).slice(2,6),ts:new Date().toISOString(),
+    cls,no,nm,x:S.x,y:S.y,chart:S.chart,
+    obs:$("sObs").value.trim(),exp:$("sExp").value.trim(),qz:$("sQ").value.trim(),
+    draft:"",note:"",level:"",final:"",sent:false});
+  save("pt_subs",subs);
+  $("subMsg").textContent="제출했습니다. 선생님 확인 뒤 피드백이 도착합니다.";
+  ["sObs","sExp","sQ"].forEach(i=>$(i).value="");
+  renderSubs();
+}
+function openMyFeedback(){
+  const nm=$("sName").value.trim(),cls=$("sClass").value.trim();
+  const box=$("myFeedback");box.classList.remove("hidden");
+  const mine=subs.filter(s=>s.nm===nm&&s.cls===cls&&s.sent&&s.final);
+  box.innerHTML=!nm?`<div class="notice warn">이름과 학반을 적은 뒤 눌러 주세요.</div>`
+    :mine.length?mine.map(s=>`<div class="fb-box" style="margin-bottom:8px"><b>${esc(new Date(s.ts).toLocaleString("ko-KR"))} 제출</b>
+      <div style="margin-top:6px">${esc(s.final)}</div></div>`).join("")
+    :`<div class="notice">아직 도착한 피드백이 없습니다. 선생님이 확인하면 이곳에 나타납니다.</div>`;
+}
+
+/* ============ 교사 로그인 ============ */
+function tryLogin(){
+  if($("pw").value===PW){$("gate").classList.add("hidden");$("dash").classList.remove("hidden");renderSubs();}
+  else $("pwMsg").innerHTML=`<b style="color:var(--red)">비밀번호가 맞지 않습니다.</b> 다시 입력해 주세요.`;
+}
+function lock(){$("dash").classList.add("hidden");$("gate").classList.remove("hidden");$("pw").value="";}
+function changePw(){
+  const a=prompt("새 비밀번호를 입력하세요");if(!a)return;
+  PW=a;save("pt_pw",PW);alert("비밀번호를 바꿨습니다.");
+}
+
+/* ============ 역량 ============ */
+const COMPS=["과학적 사고력","과학적 탐구 능력","과학적 문제 해결력","과학적 의사소통 능력","과학적 참여와 평생 학습 능력","데이터 해석 능력"];
+let comps=new Set(["과학적 사고력","과학적 탐구 능력","데이터 해석 능력"]);
+function buildCompChips(){
+  $("compChips").innerHTML=COMPS.map(c=>
+    `<button class="chip" data-c="${c}" onclick="toggleC('${c}')">${c}</button>`).join("");
+  syncComp();
+}
+function toggleC(c){comps.has(c)?comps.delete(c):comps.add(c);syncComp();saveCfg();}
+function syncComp(){document.querySelectorAll("#compChips .chip").forEach(n=>n.classList.toggle("off",!comps.has(n.dataset.c)));}
+function saveCfg(){
+  cfg={subject:$("tSubject").value,unit:$("tUnit").value,std:$("tStd").value,len:$("tLen").value,
+    tone:$("tTone").value,extra:$("tExtra").value,comps:[...comps]};
+  save("pt_cfg",cfg);
+}
+function restoreCfg(){
+  if(cfg&&cfg.subject){$("tSubject").value=cfg.subject;$("tUnit").value=cfg.unit||"";$("tStd").value=cfg.std||"";
+    $("tLen").value=cfg.len||"보통(5~6문장)";$("tTone").value=cfg.tone||"따뜻하고 격려하는";$("tExtra").value=cfg.extra||"";
+    if(cfg.comps)comps=new Set(cfg.comps);syncComp();}
+  ["tSubject","tUnit","tStd","tLen","tTone","tExtra"].forEach(i=>$(i).addEventListener("change",saveCfg));
+}
+
+/* ============ 제출물 표 ============ */
+function renderSubs(){
+  $("cnt").textContent=`(${subs.length}건 · 전달 완료 ${subs.filter(s=>s.sent).length}건)`;
+  if(!subs.length){$("subBody").innerHTML=`<tr><td colspan="4"><p class="hint" style="padding:14px">아직 제출물이 없습니다. 학생 화면에서 탐구 기록을 제출하면 이곳에 쌓입니다.</p></td></tr>`;return;}
+  $("subBody").innerHTML=subs.map((s,i)=>`<tr>
+    <td><b>${esc(s.nm)}</b><div class="mono" style="font-size:11px;color:var(--ink-3)">${esc(s.cls)} ${esc(s.no)}</div>
+      <div class="mono" style="font-size:10px;color:var(--ink-3)">${new Date(s.ts).toLocaleString("ko-KR",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"})}</div></td>
+    <td><div class="mono" style="font-size:11px;color:var(--teal)">${esc(FIELDS[s.x].ko)} → ${esc(FIELDS[s.y].ko)} · ${s.chart==="scatter"?"산점도":s.chart==="line"?"꺾은선":"막대"}</div>
+      <div style="margin-top:4px"><b>관찰</b> ${esc(s.obs)}</div>
+      ${s.exp?`<div><b>설명</b> ${esc(s.exp)}</div>`:""}
+      ${s.qz?`<div><b>질문</b> ${esc(s.qz)}</div>`:""}</td>
+    <td>
+      <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap">
+        <button class="btn violet sm" id="gb${i}" onclick="genOne(${i})">AI 초안</button>
+        <button class="btn ghost sm" onclick="sendOne(${i})">학생에게 전달</button>
+      </div>
+      ${s.note?`<div class="hint" style="margin-bottom:5px"><b>교사 참고</b> · 도달도 ${esc(s.level)} — ${esc(s.note)}</div>`:""}
+      <textarea id="fa${i}" oninput="editFinal(${i},this.value)" placeholder="AI 초안을 만든 뒤 이곳에서 고쳐 쓰세요.">${esc(s.final||s.draft)}</textarea>
+    </td>
+    <td>${s.sent?`<span class="badge done">전달 완료</span>`:s.draft?`<span class="badge draft">검토 대기</span>`:`<span class="badge">미작성</span>`}</td>
+  </tr>`).join("");
+}
+function editFinal(i,v){subs[i].final=v;subs[i].sent=false;save("pt_subs",subs);}
+function sendOne(i){
+  const v=$("fa"+i).value.trim();
+  if(!v){alert("전달할 내용이 비어 있습니다.");return;}
+  subs[i].final=v;subs[i].sent=true;save("pt_subs",subs);renderSubs();
+}
+function wipe(){if(confirm("제출물을 모두 지웁니다. 되돌릴 수 없습니다. 계속할까요?")){subs=[];save("pt_subs",subs);renderSubs();}}
+function downloadCSV(){
+  const head=["제출시각","학반","번호","이름","가로축","세로축","그래프","관찰","설명","질문","AI초안","최종피드백","성취기준 도달도","교사참고","전달여부"];
+  const body=subs.map(s=>[new Date(s.ts).toLocaleString("ko-KR"),s.cls,s.no,s.nm,FIELDS[s.x].ko,FIELDS[s.y].ko,
+    s.chart==="scatter"?"산점도":s.chart==="line"?"꺾은선":"막대",s.obs,s.exp,s.qz,s.draft,s.final,s.level,s.note,s.sent?"전달":"미전달"]
+    .map(q).join(","));
+  dl(`탐구기록_${new Date().toISOString().slice(0,10)}.csv`,[head.map(q).join(",")].concat(body).join("\n"));
+}
+
+/* ============ AI 피드백 ============ */
+function sysPrompt(){
+  saveCfg();
+  return `너는 대한민국 고등학교 ${cfg.subject} 교사를 돕는 조교다. 학생이 PubChem 원소 데이터로 그래프를 만들고 쓴 탐구 기록을 읽고, 교사가 검토할 피드백 초안을 쓴다.
+
+[단원] ${cfg.unit}
+[성취기준]
+${cfg.std}
+[평가할 교과 역량] ${[...comps].join(", ")}
+[말투] ${cfg.tone} 존댓말. 학생을 이름으로 부른다.
+[분량] ${cfg.len}
+${cfg.extra?"[교사 추가 지시] "+cfg.extra:""}
+
+규칙
+1. 위 성취기준과 선택된 교과 역량에 비추어 학생 글을 판단한다. 선택되지 않은 역량은 언급하지 않는다.
+2. 칭찬은 반드시 학생이 실제로 쓴 표현을 인용해 근거를 밝힌다. 두루뭉술한 칭찬은 쓰지 않는다.
+3. 제안은 학생이 이 앱에서 바로 해볼 수 있는 것 한 가지로 좁힌다. 어떤 축을 어떻게 바꿔 보라고 구체적으로 말한다.
+4. 정답을 알려주지 말고 스스로 확인할 방법을 알려준다.
+5. 과학적으로 틀린 서술이 있으면 부드럽지만 분명하게 짚는다.
+6. 초안일 뿐이며 교사가 고쳐 쓴다는 것을 전제로 담백하게 쓴다. 이모지는 쓰지 않는다.`;
+}
+async function callGemini(sys,user){
+  /* 제미나이 캔버스에서는 API 키를 비워 두면 캔버스가 자동으로 넣어 줍니다.
+     캔버스 밖(파일 실행·학교 서버)에서는 교사 화면의 API 키 칸에 직접 넣으세요. */
+  const key=$("tKey").value.trim();
+  const url=`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${key}`;
+  const payload={
+    systemInstruction:{parts:[{text:sys}]},
+    contents:[{role:"user",parts:[{text:user}]}],
+    generationConfig:{temperature:0.7,responseMimeType:"application/json",responseSchema:{
+      type:"OBJECT",properties:{
+        praise:{type:"STRING"},suggestion:{type:"STRING"},nextQuestion:{type:"STRING"},
+        level:{type:"STRING"},teacherNote:{type:"STRING"}},
+      required:["praise","suggestion","nextQuestion","level","teacherNote"]}}
+  };
+  let wait=900;
+  for(let i=0;i<4;i++){
+    try{
+      const res=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+      if(res.status===429||res.status>=500)throw new Error("retry "+res.status);
+      if(!res.ok)throw new Error("HTTP "+res.status+" — "+(await res.text()).slice(0,120));
+      const j=await res.json();
+      const t=(j.candidates?.[0]?.content?.parts||[]).map(p=>p.text||"").join("");
+      return JSON.parse(t.replace(/```json|```/g,"").trim());
+    }catch(e){
+      if(i===3)throw e;
+      await new Promise(r=>setTimeout(r,wait));wait*=2;
+    }
+  }
+}
+function userPrompt(s){
+  return `학생 이름: ${s.nm}
+학생이 만든 그래프: 가로축 ${FIELDS[s.x].ko}, 세로축 ${FIELDS[s.y].ko}, 종류 ${s.chart==="scatter"?"산점도":s.chart==="line"?"원자번호 순 꺾은선":"막대그래프"}
+
+1. 관찰: ${s.obs||"(빈칸)"}
+2. 설명: ${s.exp||"(빈칸)"}
+3. 새로 생긴 질문: ${s.qz||"(빈칸)"}
+
+praise, suggestion, nextQuestion 은 학생에게 그대로 보여 줄 문장으로 쓴다.
+level 은 성취기준 도달도를 상/중/하 중 하나로만 쓴다.
+teacherNote 는 교사만 볼 한 문장 메모다 (근거와 지도 시 유의점).`;
+}
+async function genOne(i){
+  const b=$("gb"+i);const old=b.innerHTML;b.disabled=true;b.innerHTML=`<span class="spin"></span>생성 중`;
+  try{
+    const r=await callGemini(sysPrompt(),userPrompt(subs[i]));
+    const txt=`[잘한 점] ${r.praise}\n\n[이렇게 해 보면 더 좋아요] ${r.suggestion}\n\n[다음 탐구 질문] ${r.nextQuestion}`;
+    subs[i].draft=txt;subs[i].final=txt;subs[i].level=r.level;subs[i].note=r.teacherNote;subs[i].sent=false;
+    save("pt_subs",subs);renderSubs();
+  }catch(e){
+    b.disabled=false;b.innerHTML=old;
+    alert("피드백을 만들지 못했습니다.\n"+e.message+"\n\n제미나이 캔버스가 아닌 곳에서 실행 중이라면 설정에 API 키를 넣어 주세요.");
+  }
+}
+async function feedbackAll(){
+  const b=$("btnAll");b.disabled=true;
+  const todo=subs.map((s,i)=>i).filter(i=>!subs[i].draft);
+  if(!todo.length){b.disabled=false;alert("초안이 없는 제출물이 없습니다.");return;}
+  for(let n=0;n<todo.length;n++){
+    b.innerHTML=`<span class="spin"></span>${n+1}/${todo.length} 생성 중`;
+    try{
+      const i=todo[n];
+      const r=await callGemini(sysPrompt(),userPrompt(subs[i]));
+      const txt=`[잘한 점] ${r.praise}\n\n[이렇게 해 보면 더 좋아요] ${r.suggestion}\n\n[다음 탐구 질문] ${r.nextQuestion}`;
+      subs[i].draft=txt;subs[i].final=txt;subs[i].level=r.level;subs[i].note=r.teacherNote;
+      save("pt_subs",subs);
+    }catch(e){alert("중간에 멈췄습니다: "+e.message);break;}
+  }
+  b.disabled=false;b.innerHTML="AI 피드백 초안 일괄 생성";renderSubs();
+}
+
+init();
+</script>
+</body>
+</html>
